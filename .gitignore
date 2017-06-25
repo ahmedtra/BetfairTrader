@@ -1,0 +1,10 @@
+.idea
+*.pyc
+*.l
+/log
+/certificate
+__pycache__/
+data/__pycache__/
+data/cassandra_wrapper/__pycache__/
+data/sql_wrapper/__pycache__/
+strategy_handlers_under_goals/__pycache__/
