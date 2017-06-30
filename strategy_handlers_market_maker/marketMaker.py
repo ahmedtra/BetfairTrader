@@ -2,54 +2,35 @@ from structlog import get_logger
 
 from strategy_handlers_under_goals.priceChaser import PriceChaser
 from strategy_handlers_under_goals.utils import get_placed_orders, get_profit_and_loss, get_under_over_markets, \
-    get_runner_under, \
+    get_runner, \
     get_runner_prices
 
 MAX_STAKE = 20
 MIN_STAKE = 4
 
 class MarketMaker():
-    def __init__(self, event_id, client):
-        get_logger().info("creating MarketMaker", event_id = event_id)
+    def __init__(self, event_id, client, market_id):
+        get_logger().info("creating MarketMaker", market_id = market_id)
         self.client = client
+        self.market_id = market_id
         self.target_profit = 4
         self.current_back = 1
         self.current_lay = 1000
         self.event_id = event_id
         self.stake = 0
         self.already_traded = 0
-        self.active = 10
         self.traded = False
         self.list_runner = self.create_runner_info()
         self.prices = {}
         self.traded_account = []
 
 
-    def find_most_active(self):
-        most_active = 10
-        most_active_updated = False
-
-        for i in self.prices.keys():
-            if i < most_active:
-                most_active = i
-        if self.active < most_active:
-            most_active_updated = True
-            self.traded = False
-        self.active = most_active
-
-        if self.active == 10:
-            return most_active_updated
-
-        self.current_back = self.prices[most_active]["back"]
-        get_logger().info("computed active bet", active = most_active, price = self.current_back, event_id = self.event_id)
-        print("price "+str(self.current_back))
-        return most_active_updated
 
     def create_runner_info(self):
-        get_logger().info("checking for runner under market", event_id = self.event_id)
-        markets = get_under_over_markets(self.client, self.event_id)
-        get_logger().info("got markets", number_markets = len(markets), event_id = self.event_id)
-        return get_runner_under(markets)
+        get_logger().info("checking for runner under market", event_id = self.event_id, market_id = self.market_id)
+        runners = get_runner(self.client, self.market_id)
+        get_logger().info("got runners", number_markets = len(runners), event_id = self.event_id, market_id = self.market_id)
+        return runners
 
     def update_runner_current_price(self):
         get_logger().info("retriving prices", event_id = self.event_id)

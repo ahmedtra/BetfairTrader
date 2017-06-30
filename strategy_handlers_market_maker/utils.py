@@ -9,71 +9,69 @@ from schematics.types.compound import ListType
 soccer_type_ids = [1]
 from list_team import team_list
 
-def get_under_over_markets(client, event_id):
+def get_runner(client, market_id):
     markets = client.list_market_catalogue(
         MarketFilter(event_type_ids=soccer_type_ids,
                      event_types=team_list,
-                     text_query = "OVER_UNDER_*5",
-                     event_ids = [event_id]),
+                     market_ids=[market_id]),
         max_results=100,
         market_projection=[v.name for v in MarketProjection]
     )
-    return markets
-
-
-def get_runner_under(markets):
     runner_list = {}
     for market in markets:
         market_name = market._data["market_name"]
-        if "Over/Under" in market_name:
-            number_goals = int(market_name[market_name.find(".5")-1])
-            runner_list[number_goals] = {}
-            runners = market._data["runners"]
-            for runner in runners:
-                if "Under" in runner._data["runner_name"]:
-                    runner_list[number_goals] = runner._data
-                    runner_list[number_goals]["market_id"] = market._data["market_id"]
-                    runner_list[number_goals]["market_start_time"] = market._data["market_start_time"]
-                    runner_list[number_goals]["event_name"] = market._data["event"]["name"]
-                    runner_list[number_goals]["timezone"] = market._data["event"]["timezone"]
-                    runner_list[number_goals]["event_id"] = market._data["event"]["id"]
+        runners = market._data["runners"]
+        for runner in runners:
+            selection_id = runner._data["selection_id"]
+            runner_list[selection_id] = {}
+            runner_list[selection_id] = runner._data
+            runner_list[selection_id]["market_id"] = market._data["market_id"]
+            runner_list[selection_id]["market_start_time"] = market._data["market_start_time"]
+            runner_list[selection_id]["event_name"] = market._data["event"]["name"]
+            runner_list[selection_id]["timezone"] = market._data["event"]["timezone"]
+            runner_list[selection_id]["event_id"] = market._data["event"]["id"]
 
     return runner_list
 
-def get_runner_prices(client, markets):
-    marketids = [market["market_id"] for market in markets.values()]
+
+
+def get_runner_prices(client, market_id, runners):
+    marketids = [market_id]
     price_projection = PriceProjection()
     price_projection.price_data = [PriceData.EX_BEST_OFFERS]
     books = client.list_market_book(market_ids=marketids, price_projection=price_projection)
     runner_prices = {}
-    selection_ids = {market["selection_id"]:s for s, market in markets.items()}
+    selection_ids = {s for s in runners.keys()}
     for book in books:
         for runner in book.runners:
             if runner.selection_id in selection_ids:
                 if runner.status is not "ACTIVE":
                     continue
-                runner_prices[selection_ids[runner.selection_id]] = {}
-                runner_prices[selection_ids[runner.selection_id]]["stats"] = runner.status
+
+                    runners[runner.selection_id]["stats"] = runner.status
                 if len(runner.ex.available_to_lay) > 0:
-                    runner_prices[selection_ids[runner.selection_id]]["lay"] = runner.ex.available_to_lay[0].price
-                    runner_prices[selection_ids[runner.selection_id]]["lay_size"] = runner.ex.available_to_lay[0].size
+                    runners[runner.selection_id]["lay"] = runner.ex.available_to_lay[0].price
+                    runners[runner.selection_id]["lay_size"] = runner.ex.available_to_lay[0].size
                 else:
-                    runner_prices[selection_ids[runner.selection_id]]["lay"] = None
-                    runner_prices[selection_ids[runner.selection_id]]["lay_size"] = None
+                    runners[runner.selection_id]["lay"] = None
+                    runners[runner.selection_id]["lay_size"] = None
                 if len(runner.ex.available_to_back) > 0:
-                    runner_prices[selection_ids[runner.selection_id]]["back"] = runner.ex.available_to_back[0].price
-                    runner_prices[selection_ids[runner.selection_id]]["back_size"] = runner.ex.available_to_back[0].size
+                    runners[runner.selection_id]["back"] = runner.ex.available_to_back[0].price
+                    runners[runner.selection_id]["back_size"] = runner.ex.available_to_back[0].size
                 else:
-                    runner_prices[selection_ids[runner.selection_id]]["back"] = None
-                    runner_prices[selection_ids[runner.selection_id]]["back_size"] = None
+                    runners[runner.selection_id]["back"] = None
+                    runners[runner.selection_id]["back_size"] = None
 
     return runner_prices
 
-def place_bet(client, price, size, market_id, selection_id):
+def place_bet(client, price, size, side, market_id, selection_id):
         order = PlaceInstruction()
         order.order_type = OrderType.LIMIT
         order.selection_id = selection_id
-        order.side = Side.BACK
+        if side == "back":
+            order.side = Side.BACK
+        elif side == "lay":
+            order.side = Side.LAY
         limit_order = LimitOrder()
         limit_order.price = price
         limit_order.size = size
@@ -129,15 +127,11 @@ def get_price_market_selection(client, market_id, selection_id):
 
 def get_placed_orders(client, market_ids):
     response = client.list_current_orders(market_ids= market_ids)
-
     return response.current_orders
 
 def initialize():
     client = authenticate()
     return client
-
-def refresh_market_data(client):
-    list_market_book = get_under_over_markets(client)
 
 
 def get_profit_and_loss(client, market_ids):
