@@ -47,20 +47,20 @@ def get_runner_prices(client, market_id, runners):
             if runner.selection_id in selection_ids:
                 if runner.status is not "ACTIVE":
                     continue
-
-                    runners[runner.selection_id]["stats"] = runner.status
+                runner_prices[runner.selection_id] = {}
+                runner_prices[runner.selection_id]["stats"] = runner.status
                 if len(runner.ex.available_to_lay) > 0:
-                    runners[runner.selection_id]["lay"] = runner.ex.available_to_lay[0].price
-                    runners[runner.selection_id]["lay_size"] = runner.ex.available_to_lay[0].size
+                    runner_prices[runner.selection_id]["lay"] = runner.ex.available_to_lay[0].price
+                    runner_prices[runner.selection_id]["lay_size"] = runner.ex.available_to_lay[0].size
                 else:
-                    runners[runner.selection_id]["lay"] = None
-                    runners[runner.selection_id]["lay_size"] = None
+                    runner_prices[runner.selection_id]["lay"] = None
+                    runner_prices[runner.selection_id]["lay_size"] = None
                 if len(runner.ex.available_to_back) > 0:
-                    runners[runner.selection_id]["back"] = runner.ex.available_to_back[0].price
-                    runners[runner.selection_id]["back_size"] = runner.ex.available_to_back[0].size
+                    runner_prices[runner.selection_id]["back"] = runner.ex.available_to_back[0].price
+                    runner_prices[runner.selection_id]["back_size"] = runner.ex.available_to_back[0].size
                 else:
-                    runners[runner.selection_id]["back"] = None
-                    runners[runner.selection_id]["back_size"] = None
+                    runner_prices[runner.selection_id]["back"] = None
+                    runner_prices[runner.selection_id]["back_size"] = None
 
     return runner_prices
 

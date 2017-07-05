@@ -6,68 +6,70 @@ from structlog import get_logger
 from authenticate import authenticate
 from common import initialize_logging
 from list_team import team_list
-from strategy_handlers_under_goals.strategyPlayer import UnderGoalsStrategyPlayer
-from strategy_handlers_under_goals.utils import client_manager
+from strategy_handlers_market_maker.strategyPlayer import MarketMakerStrategyPlayer
+from strategy_handlers_market_maker.utils import client_manager
 from time import sleep
-initialize_logging("UnderOverStrategy")
+initialize_logging("MarketMaking")
 
 class strategy_manager():
-    def __init__(self, event_id = None):
+    def __init__(self):
         self.client = authenticate()
         self.type_ids = [1]
         self.queue = queue.Queue()
         self.thread_pool = {}
-        self.max_threads = 6
-        self.traded_events = []
+        self.max_threads = 1
+        self.traded_markets = []
         self.client_manager = client_manager(self.client)
         self.client_manager.start()
 
-    def retrieve_events(self):
-        get_logger().info("fetching events")
-        events = self.client.list_events(
-            MarketFilter(event_type_ids=self.type_ids, event_types=team_list, in_play_only = True)
+    def retrieve_markets(self):
+        get_logger().info("fetching markets")
+        markets = self.client.list_market_catalogue(
+            MarketFilter(event_type_ids=self.type_ids, event_types=team_list, in_play_only = False)
         )
-        get_logger().info("fetching all events", number_events = len(events))
-        return events
+        get_logger().info("fetching all markets", number_markets = len(markets))
 
-    def event_generator(self):
+        return markets
+
+    def market_generator(self):
         while True:
-            events = self.retrieve_events()
-            event = None
-            while events:
-                event = events.pop()
+            markets = self.retrieve_markets()
+            market = None
+            while markets:
+                market = markets.pop()
 
-                if event.event.id in self.traded_events:
-                    get_logger().info("found already traded", event_name=event.event.name, event_id=event.event.id)
-                    event = None
+                if market.market_id in self.traded_markets:
+                    get_logger().info("found already traded", market_name=market.market_name, market_id=market.market_id)
+                    market = None
                     continue
 
-                get_logger().info("found event to trade", event_name = event.event.name, event_id = event.event.id)
-                self.traded_events.append(event.event.id)
+                get_logger().info("found market to trade", market_name=market.market_name, market_id=market.market_id)
+                self.traded_markets.append(market.market_id)
                 break
 
-            if event is None:
-                get_logger().info("no event waiting")
+            if market is None:
+                get_logger().info("no markets, waiting ...")
                 sleep(120)
             else:
-                yield event
+                yield market
 
     def manage_strategies(self):
-        self.events = self.retrieve_events()
 
-        for event in self.event_generator():
+        for market in self.market_generator():
 
-            event_id = event.event.id
-            get_logger().info("creating thread for strategy", event_id = event_id, event_name = event.event.name)
-            self.thread_pool[event_id] = UnderGoalsStrategyPlayer(self.queue, self.client, event_id)
-            self.thread_pool[event_id].start()
+            market_id = market.market_id
+            event_id = None
+            get_logger().info("creating thread for strategy", event_id = event_id, market_name = market.market_name,
+                              market_id = market_id)
+            self.thread_pool[market_id] = MarketMakerStrategyPlayer(self.queue, self.client, market_id)
+            self.thread_pool[market_id].start()
 
             if len(self.thread_pool) >= self.max_threads:
                 get_logger().info("strategy pool is full, block waiting ...")
-                event_id = self.queue.get(True)
-                get_logger().info("strategy finished, removing from the pool", event_id = event_id)
-                self.thread_pool[event_id].join()
-                del self.thread_pool[event_id]
+                market_id = self.queue.get(True)
+                get_logger().info("strategy finished, removing from the pool", market_id = market_id)
+                self.thread_pool[market_id].join()
+                del self.thread_pool[market_id]
 
         get_logger().info("stopping client manager")
         self.client_manager.stop()

@@ -1,5 +1,4 @@
-
-from strategy_handlers_under_goals.UnderGoalsChaser import Runners_Under_Market
+from strategy_handlers_market_maker.marketMaker import MarketMaker
 from time import sleep
 from structlog import get_logger
 import time
@@ -13,7 +12,7 @@ class MarketMakerStrategyPlayer(threading.Thread):
         self.client = client
         self.event = event_id
         self.heartbeat = heartbeat
-        self.strategy = Runners_Under_Market(event_id, client)
+        self.strategy = MarketMaker(event_id, client)
 
         get_logger().info("creating under goals strategy", event_id = event_id, heartbeat = heartbeat)
 

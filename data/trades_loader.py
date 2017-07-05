@@ -22,7 +22,7 @@ class Loader():
         if s is None:
             return "%%"
         else:
-            return "%" + s + "%"
+            return s
 
     def load_by_market_runner_filter(self, market_filter = None, runner_filter = None,
                                      competition_filter = None, event_filter = None ):

@@ -1,103 +1,137 @@
 from structlog import get_logger
 
-from strategy_handlers_under_goals.priceChaser import PriceChaser
-from strategy_handlers_under_goals.utils import get_placed_orders, get_profit_and_loss, get_under_over_markets, \
-    get_runner, \
-    get_runner_prices
+from strategy_handlers_market_maker.pricer import Pricer
+from strategy_handlers_market_maker.utils import get_placed_orders, get_profit_and_loss, \
+    get_runner, get_runner_prices
 
-MAX_STAKE = 20
-MIN_STAKE = 4
+from betfair.price import price_ticks_away, ticks_difference
+
+MAX_STAKE = 8
+MIN_STAKE = 0
+
+STARTING_STAKE = 4
 
 class MarketMaker():
-    def __init__(self, event_id, client, market_id):
+    def __init__(self, market_id, client):
         get_logger().info("creating MarketMaker", market_id = market_id)
         self.client = client
         self.market_id = market_id
         self.target_profit = 4
-        self.current_back = 1
+        self.current_back = 1.01
         self.current_lay = 1000
-        self.event_id = event_id
         self.stake = 0
         self.already_traded = 0
         self.traded = False
         self.list_runner = self.create_runner_info()
         self.prices = {}
         self.traded_account = []
+        self.pricer = {}
+        self.create_runner_info()
+        self.hedge_order_back = {"side": "back", "size": 0.0, "price": self.current_back}
+        self.hedge_order_lay = {"side": "lay", "size": 0.0, "price": self.current_back}
+        self.selection_id = self.list_runner[list(self.list_runner.keys())[0]]["selection_id"]
 
-
+        self.pricer_back = Pricer(self.client, market_id, self.selection_id)
+        self.pricer_lay = Pricer(self.client, market_id, self.selection_id)
 
     def create_runner_info(self):
-        get_logger().info("checking for runner under market", event_id = self.event_id, market_id = self.market_id)
+        get_logger().info("checking for runner for market", market_id = self.market_id)
         runners = get_runner(self.client, self.market_id)
-        get_logger().info("got runners", number_markets = len(runners), event_id = self.event_id, market_id = self.market_id)
+        get_logger().info("got runners", number_markets = len(runners), market_id = self.market_id)
         return runners
 
     def update_runner_current_price(self):
-        get_logger().info("retriving prices", event_id = self.event_id)
-        self.prices = get_runner_prices(self.client, self.list_runner)
+        get_logger().info("retriving prices", market_id = self.market_id)
+        self.prices = get_runner_prices(self.client, self.market_id, self.list_runner)
         for p in self.prices.values():
             if p["lay"] is not None and p["back"] is not None:
                 p["spread"] = 2 * (p["lay"] - p["back"]) / (p["lay"] + p["back"]) * 100
             else:
                 p["spread"] = None
-        get_logger().info("updated the prices", event_id = self.event_id)
+        get_logger().info("updated the prices", market_id = self.market_id)
+        self.current_back = self.prices[self.selection_id]["back"]
+        self.current_lay = self.prices[self.selection_id]["lay"]
         return self.prices
 
-    def compute_stake(self):
-        get_logger().debug("computing stake", event_id = self.event_id)
-        already_traded = 0
+    def compute_hedge(self):
+        get_logger().debug("computing hedge", market_id = self.market_id)
+
+        back_position = 0
+        back_price = 0
+
+        lay_position = 0
+        lay_price = 0
+
         for traded in self.traded_account:
-            already_traded += traded["size"]
-        self.already_traded = already_traded
+            if traded["side"] == "back":
+                back_position += traded["size"]
+                back_price += traded["price"] * traded["size"]
+            if traded["side"] == "lay":
+                lay_position += traded["size"]
+                lay_price += traded["price"] * traded["size"]
 
-        self.stake = (already_traded + self.target_profit) / (self.prices[self.active]["back"] - 1) * 1.2
-        get_logger().info("computed stake : ",stake = self.stake, already_traded = already_traded,
-                          price = self.current_back, event_id = self.event_id)
+        self.unhedged_position = back_price * back_position - lay_price * lay_position
 
-        self.stake = round(self.stake, 2)
+        get_logger().debug("back position", market_id = self.market_id,
+                           back = back_price, stake = back_position)
 
-        if self.stake < MIN_STAKE:
-            self.stake = MIN_STAKE
-            get_logger().info("stake inferior than minimum, setting to %f".format(MIN_STAKE),
-                              stake = self.stake, price = self.current_back, event_id = self.event_id)
-        elif self.stake> MAX_STAKE:
-            self.stake = MAX_STAKE
-            get_logger().info("stake superior than maximum, setting to %f".format(MAX_STAKE),
-                              stake = self.stake, price = self.current_back, event_id = self.event_id)
+        get_logger().debug("lay position",  market_id = self.market_id,
+                           lay = back_price, stake = back_position)
 
-        return self.stake
+        get_logger().debug("hedge", market_id=self.market_id,
+                           hedge = self.unhedged_position)
 
-    def place_bet_on_most_active(self):
-        price = self.current_back
-        size = self.stake
-        spread = self.prices[self.active]["spread"]
-        selection_id = self.list_runner[self.active]["selection_id"]
-        market_id = self.list_runner[self.active]["market_id"]
 
-        get_logger().info("placing bet", price = price, size = size,
-                          spread = spread, selection_id = selection_id,
-                          market_id = market_id, event_id = self.event_id)
-        if price is not None and spread is not None and spread < 20:
-            price_chaser = PriceChaser(self.client, market_id, selection_id)
-            matches = price_chaser.chasePrice(price, size)
-            if matches is None:
-                self.traded = False
-                return self.traded
-            self.traded_account.extend(matches)
-            self.traded = True
+        td = ticks_difference(self.current_back, self.current_lay)
+
+        if td <= 2:
+            get_logger().debug("very tight market, sitting at the current odds", market_id=self.market_id,
+                               tick_difference = td, lay = self.current_lay, back = self.current_back)
+            mk_back = self.current_lay
+            mk_lay = self.current_back
         else:
-            get_logger().info("trade condition was not met, skipping ...", event_id = self.event_id)
-            self.traded = False
+            mk_back = price_ticks_away(self.current_lay, -1)
+            mk_lay = price_ticks_away(self.current_back, 1)
+        self.hedge_order_lay["side"] = "lay"
+        self.hedge_order_lay["size"] = min(max(round(STARTING_STAKE +( self.unhedged_position / mk_lay),2), MIN_STAKE),MAX_STAKE)
+        self.hedge_order_lay["price"] = mk_lay
+        get_logger().debug("order hedging by lay",  market_id=self.market_id,
+                       lay=self.current_lay, size=self.hedge_order_lay["size"])
 
-        get_logger().info("trade flag", traded = self.traded, event_id = self.event_id)
+        self.hedge_order_back["side"] = "back"
+        self.hedge_order_back["size"] = min(max(round(STARTING_STAKE - (self.unhedged_position / mk_back),2), MIN_STAKE),MAX_STAKE)
+        self.hedge_order_back["price"] = mk_back
+
+        get_logger().debug("order hedging by back",  market_id=self.market_id,
+                       back=self.current_back, size=self.hedge_order_back["size"])
+
+
+
+    def place_spread(self):
+        price_back = self.hedge_order_back["price"]
+        price_lay = self.hedge_order_lay["price"]
+        size_back = self.hedge_order_back["size"]
+        size_lay = self.hedge_order_lay["size"]
+        selection_id = self.selection_id
+        market_id = self.market_id
+
+        get_logger().info("placing bet", price_back = price_back, price_lay = price_lay,
+                          size_back = size_back , size_lay = size_lay,
+                          selection_id = selection_id,
+                          market_id = market_id)
+
+        executed_back = self.pricer_back.Price(price_back, size_back, "back")
+        executed_lay = self.pricer_lay.Price(price_lay, size_lay, "lay")
+
+        get_logger().info("trade flag", traded = self.traded, market_id = self.market_id)
         return self.traded
 
     def compute_profit_loss(self):
 
-        selection_id = self.list_runner[self.active]["selection_id"]
-        market_id = self.list_runner[self.active]["market_id"]
-        pc = PriceChaser(self.client, market_id=market_id, selection_id = selection_id)
-        matches = pc.get_betfair_matches()
+        selection_id = self.list_runner[0]["selection_id"]
+        market_id = self.list_runner[0]["market_id"]
+        pc = Pricer(self.client, market_id=market_id, selection_id = selection_id)
+        matches = pc.get_betfair_matches("back")
 
         profit = 0
 
@@ -105,7 +139,7 @@ class MarketMaker():
             current_lay = pc.current_lay
             if current_lay is None:
                 return None
-            for match in pc.bet_fair_matches:
+            for match in pc.matched_order:
                 back_match = match["price"]
                 size_match = match["size"]
                 pl = size_match * (back_match - current_lay) / current_lay
@@ -113,10 +147,10 @@ class MarketMaker():
 
         return profit
 
-    def get_traded_amount(self):
-        already_traded = 0
-        for trades in self.traded_account:
-            already_traded += trades["size"]
+    def get_matches(self):
+        self.pricer_back.get_betfair_matches("BACK")
+        self.pricer_lay.get_betfair_matches("LAY")
+        self.traded_account = self.pricer_back.matched_order + self.pricer_lay.matched_order
 
     def get_placed_orders(self):
         market_ids = [m["market_id"] for m in self.list_runner.values()]
@@ -130,40 +164,19 @@ class MarketMaker():
         self.list_runner = self.create_runner_info()
         self.update_runner_current_price()
         if len(self.list_runner) == 0:
-            get_logger().info("no runner, skipping iteration", event_id = self.event_id)
+            get_logger().info("no runner, skipping iteration", market_id = self.market_id)
+            return False
+        if len(self.list_runner) > 2:
+            get_logger().info("market_id has more that 2 runners, skipping iteration", market_id=self.market_id)
             return False
 
-        get_logger().info("starting iteration", traded = self.traded, event_id = self.event_id)
+        get_logger().info("starting iteration", traded = self.traded, event_id = self.market_id)
 
-        self.find_most_active()
+        self.get_matches()
 
-        if self.active == 10:
-            get_logger().info("no active bet, quitting strategy", event_id = self.event_id)
-            return False
+        self.compute_hedge()
 
-        if not self.traded:
-            self.compute_stake()
-
-            if self.prices[self.active]["spread"]>20 and self.already_traded == 0:
-                get_logger().info("very wide spread, strategy not invested, quitting",
-                                  spread = self.prices[self.active]["spread"], event_id = self.event_id)
-                return False
-
-            if self.prices[self.active]["back"] < 2 and self.already_traded == 0:
-                get_logger().info("very low price, strategy not invested, quitting",
-                                  spread=self.prices[self.active]["back"], event_id = self.event_id)
-                return False
-
-            if self.prices[self.active]["back"] < 1.2:
-                get_logger().info("very low price, taking loss, quitting",
-                                  spread=self.prices[self.active]["back"], event_id=self.event_id)
-                return False
-
-            self.place_bet_on_most_active()
-
-        else:
-            pl = self.compute_profit_loss()
-            get_logger().info("profit and loss", pl = pl, event_id = self.event_id)
+        self.place_spread()
 
         return True
 
