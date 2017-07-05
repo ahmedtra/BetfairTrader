@@ -1,3 +1,4 @@
+from betfair.constants import Side
 from structlog import get_logger
 
 from strategy_handlers_market_maker.pricer import Pricer
@@ -30,7 +31,8 @@ class MarketMaker():
         self.hedge_order_back = {"side": "back", "size": 0.0, "price": self.current_back}
         self.hedge_order_lay = {"side": "lay", "size": 0.0, "price": self.current_back}
         self.selection_id = self.list_runner[list(self.list_runner.keys())[0]]["selection_id"]
-
+        self.non_matched_orders = []
+        self.matched_orders = []
         self.pricer_back = Pricer(self.client, market_id, self.selection_id)
         self.pricer_lay = Pricer(self.client, market_id, self.selection_id)
 
@@ -120,8 +122,8 @@ class MarketMaker():
                           selection_id = selection_id,
                           market_id = market_id)
 
-        executed_back = self.pricer_back.Price(price_back, size_back, "back")
-        executed_lay = self.pricer_lay.Price(price_lay, size_lay, "lay")
+        executed_back = self.pricer_back.Price(price_back, size_back, Side.BACK)
+        executed_lay = self.pricer_lay.Price(price_lay, size_lay, Side.LAY)
 
         get_logger().info("trade flag", traded = self.traded, market_id = self.market_id)
         return self.traded
@@ -148,9 +150,10 @@ class MarketMaker():
         return profit
 
     def get_matches(self):
-        self.pricer_back.get_betfair_matches("BACK")
-        self.pricer_lay.get_betfair_matches("LAY")
-        self.traded_account = self.pricer_back.matched_order + self.pricer_lay.matched_order
+        self.pricer_back.get_betfair_matches(Side.BACK)
+        self.pricer_lay.get_betfair_matches(Side.LAY)
+        self.matched_orders = self.pricer_back.matched_order + self.pricer_lay.matched_order
+        self.non_matched_orders = self.pricer_back.unmatched_order + self.pricer_lay.unmatched_order
 
     def get_placed_orders(self):
         market_ids = [m["market_id"] for m in self.list_runner.values()]

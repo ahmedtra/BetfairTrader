@@ -1,6 +1,6 @@
 from structlog import get_logger
 
-from strategy_handlers_market_maker.utils import get_price_market_selection, place_bet, replace_order, get_placed_orders
+from strategy_handlers_market_maker.utils import get_price_market_selection, place_bet, replace_order, get_placed_orders, cancel_order
 from time import sleep
 
 class Pricer():
@@ -19,7 +19,6 @@ class Pricer():
         self.unmatched_order = []
 
     def Price(self, price, size, side):
-        get_logger().info("placing_order", price = price, size = size, side = side)
         tradable = self.ask_for_price()
 
         if not tradable:
@@ -29,15 +28,32 @@ class Pricer():
         betfair_position = self.get_betfair_matches(side)
         get_logger().info("position_betfair", betfair_position=betfair_position)
 
-        get_logger().info("placing bet", current_price = self.current_back, current_size = self.current_size, price = price, size = size)
-        match = place_bet(self.client, price, size, side, self.market_id, self.selection_id)
-        bet_id = match["bet_id"]
-        if bet_id is None:
-            get_logger().info("order refused")
-            return False
+        well_priced_orders = []
+        well_priced_position = 0
+        for order in self.unmatched_order:
+            if order.price == price and well_priced_position < size:
+                well_priced_orders.append(order)
+                well_priced_position += order.size_remaining
+            else:
+                cancel_order(self.client, self.market_id, order.bet_id)
+
+        difference_position = well_priced_position - size
+
+        if difference_position >0:
+            cancel_order(self.client, self.market_id, well_priced_orders[-1].bet_id, difference_position)
+
+        elif difference_position<0:
+            remaining_size = -difference_position
+            get_logger().info("placing bet", current_price=self.current_back, current_size=self.current_size,
+                              price=price, size=size)
+            match = place_bet(self.client, price, remaining_size, side, self.market_id, self.selection_id)
+            bet_id = match["bet_id"]
+            if bet_id is None:
+                get_logger().info("order refused")
+                return False
 
         return True
-
+    
     def ask_for_price(self):
         self.current_back, self.current_lay, self.current_size, self.status, self.current_orders = \
                                 get_price_market_selection(self.client, self.market_id,self.selection_id)
@@ -56,6 +72,7 @@ class Pricer():
         matches = []
         non_matches = []
         market_position = 0
+
         for order in orders:
             if order.selection_id != self.selection_id:
                 continue
@@ -71,12 +88,12 @@ class Pricer():
             match["side"] = order.side
             market_position += order.size_matched
             matches.append(match)
+
             if order.status == "EXECUTABLE":
                 non_match["bet_id"] = order.bet_id
                 non_match["price"] = order.price_size.price
                 non_match["size"] = order.size_remaining
                 non_match["side"] = order.side
-
                 non_matches.append(non_match)
 
         self.matched_order = matches

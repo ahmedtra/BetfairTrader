@@ -1,7 +1,8 @@
 import threading
 from time import sleep
 from betfair.constants import PriceData, MarketProjection, OrderType, Side, PersistenceType
-from betfair.models import MarketFilter, PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction
+from betfair.models import MarketFilter, PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
+    CancelInstruction
 
 from authenticate import authenticate
 from schematics.types.compound import ListType
@@ -68,10 +69,7 @@ def place_bet(client, price, size, side, market_id, selection_id):
         order = PlaceInstruction()
         order.order_type = OrderType.LIMIT
         order.selection_id = selection_id
-        if side == "back":
-            order.side = Side.BACK
-        elif side == "lay":
-            order.side = Side.LAY
+        order.side = side
         limit_order = LimitOrder()
         limit_order.price = price
         limit_order.size = size
@@ -103,6 +101,10 @@ def replace_order(client, market_id, bet_id, new_price):
 
     return match
 
+def cancel_order(client, market_id, bet_id, size_reduction = None):
+    instruction_cancel = CancelInstruction()
+    instruction_cancel.bet_id = bet_id
+    instruction_cancel.size_reduction = size_reduction
 
 def get_price_market_selection(client, market_id, selection_id):
     price_projection = PriceProjection()
