@@ -3,6 +3,7 @@ from structlog import get_logger
 
 import cassandra.cluster
 import cassandra.auth
+from cassandra.query import  BatchStatement
 
 from multiprocessing import BoundedSemaphore
 from data.cassandra_wrapper.model import FIELDS_Quote
@@ -11,7 +12,7 @@ from common import singleton, get_config, process_singleton
 MAX_PARALLEL_QUERIES = 256
 
 QUOTE_SAMPLINGS = ('raw', 'sec', 'sec_shift', 'min', 'hr')
-
+MAX_BATCH_SIZE = 1000
 _query_parallel_sema = BoundedSemaphore(MAX_PARALLEL_QUERIES)
 
 _cassandra_enabled = True
@@ -113,7 +114,7 @@ class CassQuoteRepository:
     def __setstate__(self, state):
         self.__init__()
 
-    def save_async(self, quote):
+    def save_async(self, quotes):
         """
         :type entry_type: str
         :type quote: RTQuote
@@ -124,11 +125,20 @@ class CassQuoteRepository:
         INSERT INTO quote
         ({})
         VALUES ({})
-        """.format(','.join(quote.keys()),
-                   ','.join("%s" for _ in quote.keys()))
-
-        get_async_manager().execute_async(self._session, query, quote.values())
-
+        """.format(','.join(FIELDS_Quote),
+                   ','.join("%s" for _ in FIELDS_Quote))
+        batch_statement = BatchStatement()
+        for quote in quotes:
+            data = (quote.market_id, quote.selection_id, quote. status, quote. timestamp, quote.
+               total_matched, quote. last_price_traded, quote. inplay, quote.
+               back_1, quote. back_size_1, quote.back_2, quote. back_size_2, quote.back_3, quote. back_size_3, quote.
+               lay_1, quote. lay_size_1, quote. lay_2, quote. lay_size_2, quote.lay_3, quote. lay_size_3)
+            batch_statement.add(query,data)
+            if len(batch_statement)>= MAX_BATCH_SIZE:
+                get_async_manager().execute_async(self._session,batch_statement)
+                batch_statement = BatchStatement()
+        if len(batch_statement) > 0:
+            get_async_manager().execute_async(self._session,batch_statement)
 
 
     def load_data_async(self, market_id, selection_id, row_factory = None, fetch_size = None):
