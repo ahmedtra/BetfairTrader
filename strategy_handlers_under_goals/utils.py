@@ -1,7 +1,8 @@
 import threading
 from time import sleep
 from betfair.constants import PriceData, MarketProjection, OrderType, Side, PersistenceType
-from betfair.models import MarketFilter, PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction
+from betfair.models import MarketFilter, PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
+    CancelInstruction
 
 from authenticate import authenticate
 from schematics.types.compound import ListType
@@ -69,14 +70,16 @@ def get_runner_prices(client, markets):
 
     return runner_prices
 
-def place_bet(client, price, size, market_id, selection_id):
+
+def place_bet(client, price, size, side, market_id, selection_id):
+
         order = PlaceInstruction()
         order.order_type = OrderType.LIMIT
         order.selection_id = selection_id
-        order.side = Side.BACK
+        order.side = side
         limit_order = LimitOrder()
         limit_order.price = price
-        limit_order.size = size
+        limit_order.size = max(size, 4)
         limit_order.persistence_type = PersistenceType.LAPSE
         order.limit_order = limit_order
 
@@ -88,7 +91,15 @@ def place_bet(client, price, size, market_id, selection_id):
         match["bet_id"] = response.instruction_reports[0].bet_id
         match["price"] = response.instruction_reports[0].average_price_matched
         match["size"] = response.instruction_reports[0].size_matched
+
         return match
+
+def cancel_order(client, market_id, bet_id, size_reduction = None):
+    instruction_cancel = CancelInstruction()
+    instruction_cancel.bet_id = bet_id
+    instruction_cancel.size_reduction = size_reduction
+
+    response = client.cancel_orders(market_id, [instruction_cancel])
 
 def replace_order(client, market_id, bet_id, new_price):
     instruction_update = ReplaceInstruction()

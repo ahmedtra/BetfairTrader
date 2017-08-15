@@ -5,7 +5,7 @@ from strategy_handlers_market_maker.pricer import Pricer
 from strategy_handlers_market_maker.utils import get_placed_orders, get_profit_and_loss, \
     get_runner, get_runner_prices
 
-from betfair.price import price_ticks_away, ticks_difference
+from betfair.price import price_ticks_away, ticks_difference, MIN_PRICE, MAX_PRICE
 
 MAX_STAKE = 8
 MIN_STAKE = 0
@@ -64,13 +64,17 @@ class MarketMaker():
         lay_position = 0
         lay_price = 0
 
-        for traded in self.traded_account:
-            if traded["side"] == "back":
+        for traded in self.matched_orders:
+            if traded["side"] == "BACK":
                 back_position += traded["size"]
                 back_price += traded["price"] * traded["size"]
-            if traded["side"] == "lay":
+            if traded["side"] == "LAY":
                 lay_position += traded["size"]
                 lay_price += traded["price"] * traded["size"]
+        if back_position > 0:
+            back_price = back_price / back_position
+        if lay_position > 0:
+            lay_price = lay_price / lay_position
 
         self.unhedged_position = back_price * back_position - lay_price * lay_position
 
@@ -83,6 +87,10 @@ class MarketMaker():
         get_logger().debug("hedge", market_id=self.market_id,
                            hedge = self.unhedged_position)
 
+        if self.current_back is None:
+            self.current_back = MIN_PRICE
+        if self.current_lay is None:
+            self.current_lay = MAX_PRICE
 
         td = ticks_difference(self.current_back, self.current_lay)
 

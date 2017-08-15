@@ -31,11 +31,11 @@ class Pricer():
         well_priced_orders = []
         well_priced_position = 0
         for order in self.unmatched_order:
-            if order.price == price and well_priced_position < size:
+            if order["price"] == price and well_priced_position < size:
                 well_priced_orders.append(order)
-                well_priced_position += order.size_remaining
+                well_priced_position += order["size"]
             else:
-                cancel_order(self.client, self.market_id, order.bet_id)
+                cancel_order(self.client, self.market_id, order["bet_id"])
 
         difference_position = well_priced_position - size
 
@@ -52,7 +52,7 @@ class Pricer():
                 get_logger().info("order refused")
                 return False
 
-        return True
+            return True
     
     def ask_for_price(self):
         self.current_back, self.current_lay, self.current_size, self.status, self.current_orders = \
@@ -76,7 +76,7 @@ class Pricer():
         for order in orders:
             if order.selection_id != self.selection_id:
                 continue
-            if order.side != side:
+            if order.side != side.name:
                 continue
 
             match = {}

@@ -29,6 +29,14 @@ username = root
 password = root
 db = betfairdb
 
+[mysql-betfair]
+hostname = 192.168.1.103
+port = 3306
+username = root
+password = Betfair
+db = betfair
+
+
 [json_files]
 root_path = C:\Betfair\decompressed_data
 completed = C:\Betfair\completed_data

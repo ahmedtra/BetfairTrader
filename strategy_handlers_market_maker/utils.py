@@ -66,13 +66,17 @@ def get_runner_prices(client, market_id, runners):
     return runner_prices
 
 def place_bet(client, price, size, side, market_id, selection_id):
+        size_reduction = 0
+        if size < 4:
+            size_reduction = 4-size
+
         order = PlaceInstruction()
         order.order_type = OrderType.LIMIT
         order.selection_id = selection_id
         order.side = side
         limit_order = LimitOrder()
         limit_order.price = price
-        limit_order.size = size
+        limit_order.size = max(size, 4)
         limit_order.persistence_type = PersistenceType.LAPSE
         order.limit_order = limit_order
 
@@ -84,6 +88,10 @@ def place_bet(client, price, size, side, market_id, selection_id):
         match["bet_id"] = response.instruction_reports[0].bet_id
         match["price"] = response.instruction_reports[0].average_price_matched
         match["size"] = response.instruction_reports[0].size_matched
+        if size_reduction > 0:
+            bet_id = match["bet_id"]
+            cancel_order(client, market_id, bet_id, size_reduction)
+
         return match
 
 def replace_order(client, market_id, bet_id, new_price):
@@ -105,6 +113,9 @@ def cancel_order(client, market_id, bet_id, size_reduction = None):
     instruction_cancel = CancelInstruction()
     instruction_cancel.bet_id = bet_id
     instruction_cancel.size_reduction = size_reduction
+
+    response = client.cancel_orders(market_id, [instruction_cancel])
+
 
 def get_price_market_selection(client, market_id, selection_id):
     price_projection = PriceProjection()

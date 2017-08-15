@@ -1,5 +1,6 @@
 import queue
 
+from betfair.constants import MarketSort
 from betfair.models import MarketFilter
 from structlog import get_logger
 
@@ -25,7 +26,8 @@ class strategy_manager():
     def retrieve_markets(self):
         get_logger().info("fetching markets")
         markets = self.client.list_market_catalogue(
-            MarketFilter(event_type_ids=self.type_ids, event_types=team_list, in_play_only = False)
+            MarketFilter(event_type_ids=self.type_ids, event_types=team_list, in_play_only = False),
+            sort = MarketSort.MAXIMUM_TRADED
         )
         get_logger().info("fetching all markets", number_markets = len(markets))
 
@@ -58,6 +60,7 @@ class strategy_manager():
         for market in self.market_generator():
 
             market_id = market.market_id
+            market_id = "1.132430858"
             event_id = None
             get_logger().info("creating thread for strategy", event_id = event_id, market_name = market.market_name,
                               market_id = market_id)

@@ -17,7 +17,7 @@ class strategy_manager():
         self.type_ids = [1]
         self.queue = queue.Queue()
         self.thread_pool = {}
-        self.max_threads = 6
+        self.max_threads = 4
         self.traded_events = []
         self.client_manager = client_manager(self.client)
         self.client_manager.start()
@@ -53,7 +53,6 @@ class strategy_manager():
                 yield event
 
     def manage_strategies(self):
-        self.events = self.retrieve_events()
 
         for event in self.event_generator():
 

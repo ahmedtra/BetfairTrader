@@ -6,7 +6,7 @@ import threading
 import queue
 import traceback
 class MarketMakerStrategyPlayer(threading.Thread):
-    def __init__(self, queue, client, event_id, heartbeat = 60):
+    def __init__(self, queue, client, event_id, heartbeat = 1):
         threading.Thread.__init__(self)
         self.queue = queue
         self.client = client
