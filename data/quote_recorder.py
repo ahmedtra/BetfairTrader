@@ -24,7 +24,7 @@ class Recorder():
             price_projection.price_data = [PriceData.EX_BEST_OFFERS, PriceData.EX_TRADED]
             iter_books = self.client.iter_list_market_book(market_ids= self.market_ids, price_projection=price_projection, chunk_size=10)
             timestamp = datetime.utcnow()
-
+            all_runners = []
             for book in iter_books:
                 for runner in book.runners:
                     runner_dict = {}
@@ -48,8 +48,22 @@ class Recorder():
                         runner_dict["back_" + str(i+1)] = runner.ex.available_to_back[i].price
                         runner_dict["back_size_"+str(i+1)] = runner.ex.available_to_back[i].size
 
+                    for i in range(len_book_lay, 3):
+                        runner_dict["lay_" + str(i + 1)] = None
+                        runner_dict["lay_size_" + str(i + 1)] = None
 
-                    self.record(runner_dict)
+                    len_book_back = len(runner.ex.available_to_back)
+                    for i in range(len_book_back):
+                        runner_dict["back_" + str(i + 1)] = runner.ex.available_to_back[i].price
+                        runner_dict["back_size_" + str(i + 1)] = runner.ex.available_to_back[i].size
+
+                    for i in range(len_book_back, 3):
+                        runner_dict["back_" + str(i + 1)] = None
+                        runner_dict["back_size_" + str(i + 1)] = None
+
+                    all_runners.append(runner_dict)
+
+            self.record(all_runners)
 
     def record(self, runner_dict):
         self.cass_repository.save_async(runner_dict)

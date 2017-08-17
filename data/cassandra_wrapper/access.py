@@ -129,10 +129,11 @@ class CassQuoteRepository:
                    ','.join("%s" for _ in FIELDS_Quote))
         batch_statement = BatchStatement()
         for quote in quotes:
-            data = (quote.market_id, quote.selection_id, quote. status, quote. timestamp, quote.
-               total_matched, quote. last_price_traded, quote. inplay, quote.
-               back_1, quote. back_size_1, quote.back_2, quote. back_size_2, quote.back_3, quote. back_size_3, quote.
-               lay_1, quote. lay_size_1, quote. lay_2, quote. lay_size_2, quote.lay_3, quote. lay_size_3)
+            data = (quote["market_id"], quote["selection_id"], quote["status"], quote["timestamp"],
+                    quote["total_matched"], quote["last_price_traded"], quote["inplay"], quote["back_1"],
+                quote["back_size_1"], quote["back_2"], quote["back_size_2"], quote["back_3"], quote["back_size_3"],
+                    quote["lay_1"], quote["lay_size_1"], quote["lay_2"], quote["lay_size_2"], quote["lay_3"],
+                    quote["lay_size_3"])
             batch_statement.add(query,data)
             if len(batch_statement)>= MAX_BATCH_SIZE:
                 get_async_manager().execute_async(self._session,batch_statement)
@@ -208,3 +209,64 @@ class CassTradesRepository:
             result = get_async_manager().execute_async(self._session, query)
 
             return result
+
+
+class CassTradesHistRepository:
+    def __init__(self, session=None):
+        """
+        :type session: cassandra.cluster.Session
+        """
+        self._session = session or get_cassandra_session()
+
+    # __getstate__ and __setstate__ allow pickling
+
+    def __getstate__(self):
+        return ()
+
+    def __setstate__(self, state):
+        self.__init__()
+
+    def save_async(self, trades):
+        """
+        :type entry_type: str
+        :type quote: RTQuote
+        """
+
+        query = \
+        """
+        INSERT INTO trades
+        ({})
+        VALUES ({})
+        """.format(','.join(FIELDS_Quote),
+                   ','.join("%s" for _ in FIELDS_Quote))
+        batch_statement = BatchStatement()
+        for trade in trades:
+            data = (trade["SPORTS_ID"], trade["EVENT_ID"], trade["SETTLED_DATE"], trade["FULL_DESCRIPTION"],
+                    trade["SCHEDULED_OFF"], trade["EVENT"], trade["DT ACTUAL_OFF"], trade["SELECTION_ID"],
+                trade["SELECTION"], trade["ODDS"], trade["NUMBER_BETS"], trade["VOLUME_MATCHED"], trade["LATEST_TAKEN"],
+                    trade["FIRST_TAKEN"], trade["WIN_FLAG"], trade["IN_PLAY"], trade["COMPETITION_TYPE"], trade["COMPETITION"],
+                    trade["FIXTURES"], trade["EVENT_NAME"], trade["MARKET_TYPE"])
+            batch_statement.add(query,data)
+            if len(batch_statement)>= MAX_BATCH_SIZE:
+                get_async_manager().execute_async(self._session,batch_statement)
+                batch_statement = BatchStatement()
+        if len(batch_statement) > 0:
+            get_async_manager().execute_async(self._session,batch_statement)
+
+    def load_data_async(self, market_id, selection_id, row_factory=None, fetch_size=None):
+
+        query = \
+            """
+            SELECT *
+            FROM trades
+            WHERE market_id = '{}' and selection_id = {}
+            """.format(market_id, str(selection_id))
+
+        if row_factory is not None:
+            self._session.row_factory = row_factory
+        if fetch_size is not None:
+            self._session.default_fetch_size = fetch_size
+
+        result = get_async_manager().execute_async(self._session, query)
+
+        return result
