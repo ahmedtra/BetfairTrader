@@ -1,16 +1,11 @@
-import os
 
-from betfair.constants import PriceData, MarketProjection
-from betfair.models import PriceProjection, MarketFilter
-from datetime import datetime
-from time import sleep
 from os import listdir
 from os.path import isfile, join
 import pandas as pd
-import json
+
 from common import safe_move, get_hist_files
 
-from data.cassandra_wrapper.access import CassTradesRepository
+from data.cassandra_wrapper.access import CassTradesHistRepository
 from data.sql_wrapper.query import DBQuery
 
 
@@ -19,7 +14,7 @@ class Recorder():
         dir_origin, dir_completed = get_hist_files()
         self.path = dir_origin
         self.path_completed = dir_completed
-        self.cass_repository = CassTradesRepository()
+        self.cass_repository = CassTradesHistRepository()
         self.query_secdb = DBQuery()
 
     def read_files(self):
@@ -79,6 +74,7 @@ class Recorder():
                            'LATEST_TAKEN', 'FIRST_TAKEN', 'WIN_FLAG', 'IN_PLAY', 'COMPETITION_TYPE', 'COMPETITION', \
                            'FIXTURES', 'EVENT_NAME', 'MARKET_TYPE']]
 
+        df_loop = df_loop.rename(columns = {col:col.lower().replace(" ", "_") for col in df_loop.columns})
 
         return df_loop
 
