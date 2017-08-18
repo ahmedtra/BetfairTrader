@@ -252,14 +252,14 @@ class CassTradesHistRepository:
         if len(batch_statement) > 0:
             get_async_manager().execute_async(self._session,batch_statement)
 
-    def load_data_async(self, market_id, selection_id, row_factory=None, fetch_size=None):
+    def load_data_async(self, event_id, selection_id, row_factory=None, fetch_size=None):
 
         query = \
             """
             SELECT *
             FROM trades
-            WHERE market_id = '{}' and selection_id = {}
-            """.format(market_id, str(selection_id))
+            WHERE event_id = '{}' and selection_id = {}
+            """.format(event_id, str(selection_id))
 
         if row_factory is not None:
             self._session.row_factory = row_factory
@@ -268,4 +268,34 @@ class CassTradesHistRepository:
 
         result = get_async_manager().execute_async(self._session, query)
 
+        return result
+
+    def load_data_events_async(self, event_id, row_factory=None, fetch_size=None):
+
+        query = \
+            """
+            SELECT *
+            FROM trades
+            WHERE event_id = '{}'
+            """.format(event_id)
+
+        if row_factory is not None:
+            self._session.row_factory = row_factory
+        if fetch_size is not None:
+            self._session.default_fetch_size = fetch_size
+
+        result = get_async_manager().execute_async(self._session, query)
+
+        return result
+
+
+    def get_all_events(self):
+
+        query = \
+            """
+            SELECT DISTINCT event_id
+            FROM trades
+            """
+
+        result = get_async_manager().execute_async(self._session, query)
         return result
