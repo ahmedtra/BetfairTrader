@@ -32,3 +32,7 @@ db = betfairdb
 [json_files]
 root_path = C:\Betfair\decompressed_data
 completed = C:\Betfair\completed_data
+
+[hist_files]
+root_path = C:\Betfair\raw
+completed = C:\Betfair\completed

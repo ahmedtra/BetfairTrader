@@ -22,7 +22,7 @@ class Recorder():
     def get_runner_prices_and_save(self):
             price_projection = PriceProjection()
             price_projection.price_data = [PriceData.EX_BEST_OFFERS, PriceData.EX_TRADED]
-            iter_books = self.client.iter_list_market_book(market_ids= self.market_ids, price_projection=price_projection, chunk_size=10)
+            iter_books = self.client.iter_list_market_book(market_ids=self.market_ids, price_projection=price_projection, chunk_size=10)
             timestamp = datetime.utcnow()
             all_runners = []
             for book in iter_books:

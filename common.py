@@ -61,6 +61,11 @@ def get_json_files_dirs():
     return data_path, data_completed
 
 
+def get_hist_files():
+    conf = get_config()
+    data_path = conf.get("hist_files", "root_path")
+    data_completed = conf.get("hist_files", "completed")
+    return data_path, data_completed
 
 def get_certif_path():
     conf = get_config()

@@ -6,7 +6,7 @@ import cassandra.auth
 from cassandra.query import  BatchStatement
 
 from multiprocessing import BoundedSemaphore
-from data.cassandra_wrapper.model import FIELDS_Quote
+from data.cassandra_wrapper.model import FIELDS_Quote, FIELDS_Trades, FIELDS_Trades_min
 from common import singleton, get_config, process_singleton
 
 MAX_PARALLEL_QUERIES = 256
@@ -129,11 +129,7 @@ class CassQuoteRepository:
                    ','.join("%s" for _ in FIELDS_Quote))
         batch_statement = BatchStatement()
         for quote in quotes:
-            data = (quote["market_id"], quote["selection_id"], quote["status"], quote["timestamp"],
-                    quote["total_matched"], quote["last_price_traded"], quote["inplay"], quote["back_1"],
-                quote["back_size_1"], quote["back_2"], quote["back_size_2"], quote["back_3"], quote["back_size_3"],
-                    quote["lay_1"], quote["lay_size_1"], quote["lay_2"], quote["lay_size_2"], quote["lay_3"],
-                    quote["lay_size_3"])
+            data = (quote[field] for field in FIELDS_Quote)
             batch_statement.add(query,data)
             if len(batch_statement)>= MAX_BATCH_SIZE:
                 get_async_manager().execute_async(self._session,batch_statement)
@@ -173,10 +169,10 @@ class CassTradesRepository:
         def __getstate__(self):
             return ()
 
-        def __setstate__(self, state):
+        def __setstate__(self, trades):
             self.__init__()
 
-        def save_async(self, trade):
+        def save_async(self, trades):
             """
             :type entry_type: str
             :type quote: RTQuote
@@ -184,13 +180,20 @@ class CassTradesRepository:
 
             query = \
                 """
-                INSERT INTO tradesmin
+                INSERT INTO trades_min
                 ({})
                 VALUES ({})
-                """.format(','.join(trade.keys()),
-                           ','.join("%s" for _ in trade.keys()))
-
-            get_async_manager().execute_async(self._session, query, trade.values())
+                """.format(','.join(FIELDS_Trades),
+                           ','.join("%s" for _ in FIELDS_Quote))
+            batch_statement = BatchStatement()
+            for trade in trades:
+                data = (trade[field] for field in FIELDS_Trades_min)
+                batch_statement.add(query, data)
+                if len(batch_statement) >= MAX_BATCH_SIZE:
+                    get_async_manager().execute_async(self._session, batch_statement)
+                    batch_statement = BatchStatement()
+            if len(batch_statement) > 0:
+                get_async_manager().execute_async(self._session, batch_statement)
 
         def load_data_async(self, market_id, selection_id, row_factory=None, fetch_size=None):
 
@@ -237,15 +240,11 @@ class CassTradesHistRepository:
         INSERT INTO trades
         ({})
         VALUES ({})
-        """.format(','.join(FIELDS_Quote),
-                   ','.join("%s" for _ in FIELDS_Quote))
+        """.format(','.join(FIELDS_Trades),
+                   ','.join("%s" for _ in FIELDS_Trades))
         batch_statement = BatchStatement()
         for trade in trades:
-            data = (trade["SPORTS_ID"], trade["EVENT_ID"], trade["SETTLED_DATE"], trade["FULL_DESCRIPTION"],
-                    trade["SCHEDULED_OFF"], trade["EVENT"], trade["DT ACTUAL_OFF"], trade["SELECTION_ID"],
-                trade["SELECTION"], trade["ODDS"], trade["NUMBER_BETS"], trade["VOLUME_MATCHED"], trade["LATEST_TAKEN"],
-                    trade["FIRST_TAKEN"], trade["WIN_FLAG"], trade["IN_PLAY"], trade["COMPETITION_TYPE"], trade["COMPETITION"],
-                    trade["FIXTURES"], trade["EVENT_NAME"], trade["MARKET_TYPE"])
+            data = (trade[field] for field in FIELDS_Trades)
             batch_statement.add(query,data)
             if len(batch_statement)>= MAX_BATCH_SIZE:
                 get_async_manager().execute_async(self._session,batch_statement)
