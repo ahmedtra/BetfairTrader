@@ -25,7 +25,7 @@ class strategy_manager():
     def retrieve_events(self):
         get_logger().info("fetching events")
         events = self.client.list_events(
-            MarketFilter(event_type_ids=self.type_ids, event_types=team_list, in_play_only = True)
+            MarketFilter(event_type_ids=self.type_ids, event_types=team_list)
         )
         get_logger().info("fetching all events", number_events = len(events))
         return events

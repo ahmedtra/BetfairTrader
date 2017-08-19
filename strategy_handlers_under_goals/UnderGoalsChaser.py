@@ -1,10 +1,12 @@
 from betfair.constants import Side
+from betfair.price import price_ticks_away, nearest_price
 from structlog import get_logger
 
 from strategy_handlers_under_goals.priceChaser import PriceChaser
 from strategy_handlers_under_goals.utils import get_placed_orders, get_profit_and_loss, get_under_over_markets, \
     get_runner_under, \
     get_runner_prices
+from strategy_handlers_under_goals.pricer import Pricer
 
 MAX_STAKE = 4
 MIN_STAKE = 4
@@ -27,6 +29,7 @@ class Runners_Under_Market():
         self.win = {i:0 for i in range(9)}
         self.lost = {i:0 for i in range(9)}
         self.traded_account = []
+        self.inplay = False
 
 
     def find_most_active(self):
@@ -45,6 +48,7 @@ class Runners_Under_Market():
             return most_active_updated
 
         self.current_back = self.prices[most_active]["back"]
+        self.current_lay = self.prices[most_active]["lay"]
         get_logger().info("computed active bet", active = most_active, price = self.current_back, event_id = self.event_id)
         print("price "+str(self.current_back))
         return most_active_updated
@@ -167,25 +171,32 @@ class Runners_Under_Market():
             get_logger().info("no active bet, quitting strategy", event_id = self.event_id)
             return False
 
+        self.inplay = self.prices[self.active]["inplay"]
+
         if not self.traded:
             self.compute_stake()
 
-            if self.prices[self.active]["spread"]>20 and self.already_traded == 0:
-                get_logger().info("very wide spread, strategy not invested, quitting",
-                                  spread = self.prices[self.active]["spread"], event_id = self.event_id)
-                return False
+            if not self.inplay:
+                self.place_passif_bet()
+            else:
 
-            if self.prices[self.active]["back"] < 2 and self.already_traded == 0:
-                get_logger().info("very low price, strategy not invested, quitting",
-                                  spread=self.prices[self.active]["back"], event_id = self.event_id)
-                return False
+                if self.prices[self.active]["spread"] > 20 and self.already_traded == 0:
+                    get_logger().info("very wide spread, strategy not invested, quitting",
+                                      spread=self.prices[self.active]["spread"], event_id=self.event_id)
+                    return False
 
-            if self.prices[self.active]["back"] < 1.2:
-                get_logger().info("very low price, taking loss, quitting",
-                                  spread=self.prices[self.active]["back"], event_id=self.event_id)
-                return False
+                if self.prices[self.active]["back"] < 2 and self.already_traded == 0:
+                    get_logger().info("very low price, strategy not invested, quitting",
+                                      spread=self.prices[self.active]["back"], event_id=self.event_id)
+                    return False
 
-            self.place_bet_on_most_active()
+                if self.prices[self.active]["back"] < 1.2:
+                    get_logger().info("very low price, taking loss, quitting",
+                                      spread=self.prices[self.active]["back"], event_id=self.event_id)
+                    return False
+
+
+                self.place_bet_on_most_active()
 
         else:
            self.pl = self.compute_profit_loss()
@@ -264,4 +275,16 @@ class Runners_Under_Market():
                 lay_hedge = round(lay_hedge, 2)
                 get_logger().info("lquidating half position")
                 pc.chasePrice(current_lay, lay_hedge, Side.LAY, True)
+
+    def place_passif_bet(self):
+        selection_id = self.list_runner[self.active]["selection_id"]
+        market_id = self.list_runner[self.active]["market_id"]
+        size = self.stake
+        if self.current_lay is None:
+            price = nearest_price(max(self.current_back * 10, 200))
+        else:
+            price = price_ticks_away(self.current_lay, -1)
+        pricer = Pricer(self.client, market_id, selection_id)
+        pricer.Price(price, size, Side.BACK)
+
 

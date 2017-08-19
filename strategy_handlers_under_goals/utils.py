@@ -53,8 +53,11 @@ def get_runner_prices(client, markets):
             if runner.selection_id in selection_ids:
                 if runner.status is not "ACTIVE":
                     continue
+
                 runner_prices[selection_ids[runner.selection_id]] = {}
                 runner_prices[selection_ids[runner.selection_id]]["stats"] = runner.status
+                runner_prices[selection_ids[runner.selection_id]]["inplay"] = book.inplay
+
                 if len(runner.ex.available_to_lay) > 0:
                     runner_prices[selection_ids[runner.selection_id]]["lay"] = runner.ex.available_to_lay[0].price
                     runner_prices[selection_ids[runner.selection_id]]["lay_size"] = runner.ex.available_to_lay[0].size
