@@ -1,16 +1,17 @@
+import datetime
 import queue
 
 from betfair.constants import MarketSort
-from betfair.models import MarketFilter
+from betfair.models import MarketFilter, TimeRange
 from structlog import get_logger
-
+from datetime import datetime, timedelta
 from authenticate import authenticate
 from common import initialize_logging
 from list_team import team_list
-from strategy_handlers_under_goals.strategyPlayer import UnderGoalsStrategyPlayer
-from strategy_handlers_under_goals.utils import client_manager
+from strategy_handlers_draw.strategyPlayer import DrawStrategyPlayer
+from strategy_handlers_draw.utils import client_manager
 from time import sleep
-initialize_logging("UnderOverStrategy")
+initialize_logging("DrawStrategy")
 
 class strategy_manager():
     def __init__(self, event_id = None):
@@ -25,8 +26,12 @@ class strategy_manager():
 
     def retrieve_events(self):
         get_logger().info("fetching events")
+        actual_time = datetime.now()
+        time_from = (actual_time - timedelta(hours=5)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        time_to = (actual_time + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
         events = self.client.list_events(
-            MarketFilter(event_type_ids=self.type_ids, in_play_only = False),
+            MarketFilter(event_type_ids=self.type_ids, in_play_only = False,
+                         market_start_time = TimeRange(from_ = time_from, to = time_to)),
         )
         get_logger().info("fetching all events", number_events = len(events))
         return events
@@ -37,9 +42,6 @@ class strategy_manager():
             event = None
             while events:
                 event = events.pop()
-
-                if event.event.id != '28350828':
-                    continue
 
                 if event.event.id in self.traded_events:
                     get_logger().info("found already traded", event_name=event.event.name, event_id=event.event.id)
@@ -65,7 +67,7 @@ class strategy_manager():
 
             event_id = event.event.id
             get_logger().info("creating thread for strategy", event_id = event_id, event_name = event.event.name)
-            self.thread_pool[event_id] = UnderGoalsStrategyPlayer(self.queue, self.client, event_id)
+            self.thread_pool[event_id] = DrawStrategyPlayer(self.queue, self.client, event_id)
             self.thread_pool[event_id].start()
 
             if len(self.thread_pool) >= self.max_threads:

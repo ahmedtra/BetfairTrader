@@ -1,19 +1,19 @@
 
-from strategy_handlers_under_goals.UnderGoalsChaser import Runners_Under_Market
+from strategy_handlers_draw.DrawChaser import Draw_Market
 from time import sleep
 from structlog import get_logger
 import time
 import threading
 import queue
 import traceback
-class UnderGoalsStrategyPlayer(threading.Thread):
-    def __init__(self, queue, client, event_id, heartbeat = 2):
+class DrawStrategyPlayer(threading.Thread):
+    def __init__(self, queue, client, event_id, heartbeat = 30):
         threading.Thread.__init__(self)
         self.queue = queue
         self.client = client
         self.event = event_id
         self.heartbeat = heartbeat
-        self.strategy = Runners_Under_Market(event_id, client)
+        self.strategy = Draw_Market(event_id, client)
 
         get_logger().info("creating under goals strategy", event_id = event_id, heartbeat = heartbeat)
 
