@@ -1,15 +1,13 @@
 import queue
+from time import sleep
 
-from betfair.constants import MarketSort
 from betfair.models import MarketFilter
 from structlog import get_logger
 
-from authenticate import authenticate
+from betfair_wrapper.authenticate import authenticate
 from common import initialize_logging
-from list_team import team_list
 from strategy_handlers_under_goals.strategyPlayer import UnderGoalsStrategyPlayer
 from strategy_handlers_under_goals.utils import client_manager
-from time import sleep
 initialize_logging("UnderOverStrategy")
 
 class strategy_manager():

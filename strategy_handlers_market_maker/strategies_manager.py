@@ -1,15 +1,15 @@
 import queue
+from time import sleep
 
 from betfair.constants import MarketSort
 from betfair.models import MarketFilter
 from structlog import get_logger
 
-from authenticate import authenticate
+from betfair_wrapper.authenticate import authenticate
 from common import initialize_logging
 from list_team import team_list
 from strategy_handlers_market_maker.strategyPlayer import MarketMakerStrategyPlayer
 from strategy_handlers_market_maker.utils import client_manager
-from time import sleep
 initialize_logging("MarketMaking")
 
 class strategy_manager():

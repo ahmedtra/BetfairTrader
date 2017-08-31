@@ -1,16 +1,15 @@
 import datetime
 import queue
+from datetime import datetime, timedelta
+from time import sleep
 
-from betfair.constants import MarketSort
 from betfair.models import MarketFilter, TimeRange
 from structlog import get_logger
-from datetime import datetime, timedelta
-from authenticate import authenticate
+
+from betfair_wrapper.authenticate import authenticate
 from common import initialize_logging
-from list_team import team_list
-from strategy_handlers_draw.strategyPlayer import DrawStrategyPlayer
 from strategy_handlers_draw.utils import client_manager
-from time import sleep
+
 initialize_logging("DrawStrategy")
 
 class strategy_manager():

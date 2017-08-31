@@ -1,11 +1,11 @@
 import threading
 from time import sleep
-from betfair.constants import PriceData, MarketProjection, OrderType, Side, PersistenceType
+
+from betfair.constants import PriceData, MarketProjection, OrderType, PersistenceType
 from betfair.models import MarketFilter, PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
     CancelInstruction
 
-from authenticate import authenticate
-from schematics.types.compound import ListType
+from betfair_wrapper.authenticate import authenticate
 
 soccer_type_ids = [1]
 from list_team import team_list

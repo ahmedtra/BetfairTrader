@@ -1,16 +1,15 @@
 import threading
 from time import sleep
-from betfair.constants import PriceData, MarketProjection, OrderType, Side, PersistenceType
-from betfair.models import MarketFilter, PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
-    CancelInstruction
 
-from authenticate import authenticate
-from schematics.types.compound import ListType
+from betfair.constants import PriceData, MarketProjection
+from betfair.models import MarketFilter, PriceProjection
+
+from betfair_wrapper.authenticate import authenticate
 
 soccer_type_ids = [1]
-from list_team import team_list
 
-def get_under_over_markets(client, event_id, text_query = ""):
+
+def get_markets(client, event_id, text_query = ""):
 
     markets = client.list_market_catalogue(
         MarketFilter(event_type_ids=soccer_type_ids,
@@ -20,6 +19,23 @@ def get_under_over_markets(client, event_id, text_query = ""):
         market_projection=[v.name for v in MarketProjection]
     )
     return markets
+
+def get_runners(markets):
+    runner_list = {}
+    for market in markets:
+        market_name = market._data["market_name"]
+        runners = market._data["runners"]
+        for runner in runners:
+            selection_id = runner.selection_id
+            runner_list[selection_id] = {}
+            runner_list[selection_id] = runner._data
+            runner_list[selection_id]["market_id"] = market._data["market_id"]
+            runner_list[selection_id]["market_start_time"] = market._data["market_start_time"]
+            runner_list[selection_id]["event_name"] = market._data["event"]["name"]
+            runner_list[selection_id]["timezone"] = market._data["event"]["timezone"]
+            runner_list[selection_id]["event_id"] = market._data["event"]["id"]
+
+    return runner_list
 
 def get_runner_under(markets):
     runner_list = {}
@@ -77,27 +93,3 @@ def initialize():
     client = authenticate()
     return client
 
-def refresh_market_data(client):
-    list_market_book = get_under_over_markets(client)
-
-
-def get_profit_and_loss(client, market_ids):
-    response = client.list_market_profit_and_loss(market_ids)
-    return response
-
-class client_manager(threading.Thread):
-    def __init__(self, client):
-        threading.Thread.__init__(self)
-        self.client = client
-        self._stop_event = threading.Event()
-
-    def run(self):
-        while True:
-            sleep(600)
-            self.client.keep_alive()
-
-    def stop(self):
-        self._stop_event.set()
-
-    def stopped(self):
-        return self._stop_event.is_set()
