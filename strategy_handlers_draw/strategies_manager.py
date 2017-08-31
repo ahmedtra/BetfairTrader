@@ -19,16 +19,16 @@ class strategy_manager():
         self.type_ids = [1]
         self.queue = queue.Queue()
         self.thread_pool = {}
-        self.max_threads = 1
+        self.max_threads = 100
         self.traded_events = []
         self.client_manager = client_manager(self.client)
         self.client_manager.start()
 
     def retrieve_events(self):
         get_logger().info("fetching events")
-        actual_time = datetime.now()
-        time_from = (actual_time - timedelta(hours=5)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
-        time_to = (actual_time + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        actual_time = datetime.utcnow()
+        time_from = (actual_time - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        time_to = (actual_time + timedelta(minutes=120)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
         events = self.client.list_events(
             MarketFilter(event_type_ids=self.type_ids, in_play_only = False,
                          market_start_time = TimeRange(from_ = time_from, to = time_to)),
