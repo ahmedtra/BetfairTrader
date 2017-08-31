@@ -10,8 +10,6 @@ from betfair_wrapper.authenticate import authenticate
 from common import initialize_logging
 from strategy_handlers_draw.utils import client_manager
 
-initialize_logging("DrawStrategy")
-
 class strategy_manager():
     def __init__(self, strategy, event_id = None, time_filter = None, inplay_only = False):
         self.client = authenticate()

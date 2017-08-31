@@ -92,7 +92,7 @@ class Pricer():
 
             if order.status == "EXECUTABLE":
                 non_match["bet_id"] = order.bet_id
-                non_match["price"] = order.price_size.price
+                non_match["price"] = order.price_size.quote
                 non_match["size"] = order.size_remaining
                 non_match["side"] = order.side
                 non_matches.append(non_match)

@@ -15,7 +15,7 @@ class positionFetcher():
         self.win = 0
         self.lost = 0
 
-    def get_betfair_matches(self, side):
+    def get_betfair_matches(self, side = None):
         orders = get_placed_orders(self.client, market_ids=[self.market_id])
         matches = []
         non_matches = []
@@ -24,8 +24,10 @@ class positionFetcher():
         for order in orders:
             if order.selection_id != self.selection_id:
                 continue
-            if order.side != side.name:
-                continue
+
+            if side is not None:
+                if order.side != side.name:
+                    continue
 
             match = {}
             non_match = {}
@@ -39,7 +41,7 @@ class positionFetcher():
 
             if order.status == "EXECUTABLE":
                 non_match["bet_id"] = order.bet_id
-                non_match["price"] = order.price_size.price
+                non_match["price"] = order.price_size.quote
                 non_match["size"] = order.size_remaining
                 non_match["side"] = order.side
                 non_matches.append(non_match)

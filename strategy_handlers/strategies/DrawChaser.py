@@ -2,10 +2,10 @@ from betfair.constants import Side
 from betfair.price import price_ticks_away, nearest_price
 from structlog import get_logger
 
-from strategy_handlers_draw.priceChaser import PriceChaser
+from executor.execution import Execution
+from executor.positionFetcher import positionFetcher
 from betfair_wrapper.utils import  \
-    get_runner_prices, get_runners, get_odds_markets
-from strategy_handlers_draw.pricer import Pricer
+    get_runner_prices, get_runners, get_markets
 
 from strategy_handlers.strategy import Strategy
 
@@ -22,7 +22,7 @@ class Draw_Market(Strategy):
 
     def create_runner_info(self):
         get_logger().info("checking for runner under market", event_id = self.event_id)
-        markets = get_odds_markets(self.client, self.event_id)
+        markets = get_markets(self.client, self.event_id, "MATCH_ODDS")
         get_logger().info("got markets", number_markets = len(markets), event_id = self.event_id)
         return get_runners(markets)
 
@@ -35,17 +35,6 @@ class Draw_Market(Strategy):
                 self.lost[runner["selection_id"]] = 0
             if runner["runner_name"] == "The Draw":
                 self.the_draw = runner["selection_id"]
-        
-    def update_runner_current_price(self):
-        get_logger().info("retriving prices", event_id = self.event_id)
-        self.prices = get_runner_prices(self.client, self.list_runner)
-        for p in self.prices.values():
-            if p["lay"] is not None and p["back"] is not None:
-                p["spread"] = 2 * (p["lay"] - p["back"]) / (p["lay"] + p["back"]) * 100
-            else:
-                p["spread"] = None
-        get_logger().info("updated the prices", event_id = self.event_id)
-        return self.prices
 
     def compute_stake(self):
         get_logger().debug("computing stake", event_id = self.event_id)
@@ -87,12 +76,11 @@ class Draw_Market(Strategy):
                           spread = spread, selection_id = selection_id,
                           market_id = market_id, event_id = self.event_id)
         if price is not None and spread is not None and spread < 20:
-            price_chaser = PriceChaser(self.client, market_id, selection_id)
-            matches = price_chaser.chasePrice(price, size, Side.BACK)
+            price_chaser = Execution(self.client, market_id, selection_id)
+            matches = price_chaser.execute(price, size, Side.BACK)
             if matches is None:
                 self.traded = False
                 return self.traded
-            self.traded_account.extend(matches)
             self.traded = True
         else:
             get_logger().info("trade condition was not met, skipping ...", event_id = self.event_id)
@@ -104,7 +92,7 @@ class Draw_Market(Strategy):
     def compute_profit_loss(self):
         selection_id = self.list_runner[self.the_draw]["selection_id"]
         market_id = self.list_runner[self.the_draw]["market_id"]
-        pc = PriceChaser(self.client, market_id=market_id, selection_id = selection_id)
+        pc = positionFetcher(self.client, market_id=market_id, selection_id = selection_id)
 
         closed_market_outcome = 0
         for key in self.lost.keys():
@@ -121,11 +109,6 @@ class Draw_Market(Strategy):
         profit = closed_market_outcome + current_profit
 
         return profit
-
-    def get_traded_amount(self):
-        already_traded = 0
-        for trades in self.traded_account:
-            already_traded += trades["size"]
 
     def looper(self):
         self.list_runner = self.create_runner_info()

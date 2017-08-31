@@ -57,13 +57,13 @@ def get_runner_prices(client, markets):
                 runner_prices[selection_ids[runner.selection_id]]["inplay"] = book.inplay
 
                 if len(runner.ex.available_to_lay) > 0:
-                    runner_prices[selection_ids[runner.selection_id]]["lay"] = runner.ex.available_to_lay[0].price
+                    runner_prices[selection_ids[runner.selection_id]]["lay"] = runner.ex.available_to_lay[0].quote
                     runner_prices[selection_ids[runner.selection_id]]["lay_size"] = runner.ex.available_to_lay[0].size
                 else:
                     runner_prices[selection_ids[runner.selection_id]]["lay"] = None
                     runner_prices[selection_ids[runner.selection_id]]["lay_size"] = None
                 if len(runner.ex.available_to_back) > 0:
-                    runner_prices[selection_ids[runner.selection_id]]["back"] = runner.ex.available_to_back[0].price
+                    runner_prices[selection_ids[runner.selection_id]]["back"] = runner.ex.available_to_back[0].quote
                     runner_prices[selection_ids[runner.selection_id]]["back_size"] = runner.ex.available_to_back[0].size
                 else:
                     runner_prices[selection_ids[runner.selection_id]]["back"] = None
@@ -127,10 +127,10 @@ def get_price_market_selection(client, market_id, selection_id):
         if runner.selection_id == selection_id:
             if len(runner.ex.available_to_back) == 0:
                 return None, None, None, None, None
-            back = runner.ex.available_to_back[0].price
+            back = runner.ex.available_to_back[0].quote
             lay = None
             if len(runner.ex.available_to_lay) != 0:
-                lay = runner.ex.available_to_lay[0].price
+                lay = runner.ex.available_to_lay[0].quote
             size = runner.ex.available_to_back[0].size
             orders = runner.orders
             status = runner.status
@@ -147,10 +147,6 @@ def get_placed_orders(client, market_ids):
 def initialize():
     client = authenticate()
     return client
-
-def refresh_market_data(client):
-    list_market_book = get_under_over_markets(client)
-
 
 def get_profit_and_loss(client, market_ids):
     response = client.list_market_profit_and_loss(market_ids)

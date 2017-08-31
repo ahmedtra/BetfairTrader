@@ -1,5 +1,5 @@
-from betfair.constants import PriceData, MarketProjection, OrderType, Side, PersistenceType
-from betfair.models import MarketFilter, PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
+from betfair.constants import PriceData, OrderType, PersistenceType
+from betfair.models import PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
     CancelInstruction
 
 soccer_type_ids = [1]
@@ -70,10 +70,10 @@ def get_price_market_selection(client, market_id, selection_id):
         if runner.selection_id == selection_id:
             if len(runner.ex.available_to_back) == 0:
                 return None, None, None, None, None
-            back = runner.ex.available_to_back[0].price
+            back = runner.ex.available_to_back[0].quote
             lay = None
             if len(runner.ex.available_to_lay) != 0:
-                lay = runner.ex.available_to_lay[0].price
+                lay = runner.ex.available_to_lay[0].quote
             size = runner.ex.available_to_back[0].size
             orders = runner.orders
             status = runner.status
