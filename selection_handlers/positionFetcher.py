@@ -3,12 +3,12 @@ from structlog import get_logger
 
 from betfair_wrapper.order_utils import get_placed_orders
 
-class positionFetcher():
+from selection_handlers import Selection
+
+class positionFetcher(Selection):
     def __init__(self, client, market_id, selection_id):
-        get_logger().debug("Fetching Position", market_id=market_id, selection_id=selection_id)
-        self.client = client
-        self.market_id = market_id
-        self.selection_id = selection_id
+        super(positionFetcher, self).__init__(client, market_id, selection_id)
+
         self.matches = []
         self.matched_order = []
         self.unmatched_order = []

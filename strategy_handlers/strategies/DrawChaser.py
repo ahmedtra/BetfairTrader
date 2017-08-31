@@ -2,8 +2,8 @@ from betfair.constants import Side
 from betfair.price import price_ticks_away, nearest_price
 from structlog import get_logger
 
-from executor.execution import Execution
-from executor.positionFetcher import positionFetcher
+from selection_handlers.execution import Execution
+from selection_handlers.positionFetcher import positionFetcher
 from betfair_wrapper.utils import  \
     get_runner_prices, get_runners, get_markets
 
@@ -92,7 +92,7 @@ class Draw_Market(Strategy):
     def compute_profit_loss(self):
         selection_id = self.list_runner[self.the_draw]["selection_id"]
         market_id = self.list_runner[self.the_draw]["market_id"]
-        pc = positionFetcher(self.client, market_id=market_id, selection_id = selection_id)
+        pc = Execution(self.client, market_id=market_id, selection_id = selection_id)
 
         closed_market_outcome = 0
         for key in self.lost.keys():
@@ -156,79 +156,7 @@ class Draw_Market(Strategy):
            self.pl = self.compute_profit_loss()
            get_logger().info("profit and loss", pl = self.pl, event_id = self.event_id)
 
-        unhedged_position = self.compute_unhedged_position()
-        self.cashout(unhedged_position)
         return True
-
-    def compute_unhedged_position(self):
-        selection_id = self.list_runner[self.the_draw]["selection_id"]
-        market_id = self.list_runner[self.the_draw]["market_id"]
-        pc = PriceChaser(self.client, market_id=market_id, selection_id=selection_id)
-        matched_orders = []
-        matches_back = pc.get_betfair_matches(Side.BACK)
-        matched_orders = matched_orders + pc.bet_fair_matches
-        matches_lay = pc.get_betfair_matches(Side.LAY)
-        matched_orders = matched_orders + pc.bet_fair_matches
-        back_position = 0
-        back_price = 0
-
-        lay_position = 0
-        lay_price = 0
-
-        for traded in matched_orders:
-            if traded["side"] == "BACK":
-                back_position += traded["size"]
-                back_price += traded["price"] * traded["size"]
-            if traded["side"] == "LAY":
-                lay_position += traded["size"]
-                lay_price += traded["price"] * traded["size"]
-        if back_position > 0:
-            back_price = back_price / back_position
-        if lay_position > 0:
-            lay_price = lay_price / lay_position
-
-
-
-        win_outcome = back_price * back_position - lay_price * lay_position
-        if win_outcome == 0:
-            win_outcome = self.win[self.the_draw]
-
-        lost_outcome = - back_position + lay_position
-        if lost_outcome == 0:
-            lost_outcome = self.lost[self.the_draw]
-
-        get_logger().debug("back position", market_id= market_id,
-                           back=back_price, stake=back_position)
-
-        get_logger().debug("lay position", market_id= market_id,
-                           lay=back_price, stake=back_position)
-
-        get_logger().info("win_outcome", market_id= market_id,
-                           hedge=win_outcome)
-        get_logger().info("loss_outcome", market_id= market_id,
-                           hedge=lost_outcome)
-
-        self.win[self.the_draw] = win_outcome
-        self.lost[self.the_draw] = lost_outcome
-        return win_outcome
-
-    def cashout(self, unhedged_position):
-        selection_id = self.list_runner[self.the_draw]["selection_id"]
-        market_id = self.list_runner[self.the_draw]["market_id"]
-        pc = PriceChaser(self.client, market_id=market_id, selection_id=selection_id)
-
-        if pc.ask_for_price():
-            current_lay = pc.current_lay
-            if current_lay is None:
-                return None
-
-            get_logger().info("cashout", cashout = unhedged_position / current_lay)
-            lay_hedge = unhedged_position / current_lay * 0.5
-
-            if lay_hedge > self.target_profit:
-                lay_hedge = round(lay_hedge, 2)
-                get_logger().info("lquidating half position")
-                pc.chasePrice(current_lay, lay_hedge, Side.LAY, True)
 
     def place_passif_bet(self):
         selection_id = self.list_runner[self.the_draw]["selection_id"]
@@ -238,7 +166,7 @@ class Draw_Market(Strategy):
             price = nearest_price(max(self.current_back * 10, 200))
         else:
             price = price_ticks_away(self.current_lay, -1)
-        pricer = Pricer(self.client, market_id, selection_id)
-        pricer.Price(price, size, Side.BACK)
+        pricer = Execution(self.client, market_id, selection_id)
+        pricer.quote(price, size, Side.BACK)
 
 

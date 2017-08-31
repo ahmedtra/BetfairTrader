@@ -4,20 +4,19 @@ from abc import ABC, abstractmethod
 from betfair_wrapper.order_utils import get_price_market_selection
 from time import sleep
 from betfair_wrapper.order_utils import cancel_order, place_bet
-from executor.positionFetcher import positionFetcher
+from selection_handlers.positionFetcher import positionFetcher
+from selection_handlers.priceService import priceService
 
 
-class Execution(positionFetcher):
+class Execution(positionFetcher, priceService):
     def __init__(self, client, market_id, selection_id):
         super(Execution, self).__init__(client, market_id, selection_id)
-        get_logger().info("creating exection", market_id=market_id, selection_id=selection_id)
+
         self.current_orders = None
         self.current_back = None
         self.current_lay = None
         self.current_size = None
         self.status = None
-
-        self.positionFetcher = positionFetcher(client, market_id, selection_id)
 
     def quote(self, price, size, side):
         tradable = self.ask_for_price()
@@ -93,19 +92,6 @@ class Execution(positionFetcher):
                 return False
 
             return True
-
-    def ask_for_price(self):
-        self.current_back, self.current_lay, self.current_size, self.status, self.current_orders = \
-            get_price_market_selection(self.client, self.market_id, self.selection_id)
-        while self.status == "SUSPENDED":
-            sleep(10)
-            self.current_back, self.lay, self.current_size, self.status, self.current_orders = \
-                get_price_market_selection(self.client, self.market_id, self.selection_id)
-
-        if self.status == "ACTIVE":
-            return True
-        else:
-            return False
 
     def cashout(self, percentage = 1.0):
         unhedged_pos = self.compute_unhedged_position()
