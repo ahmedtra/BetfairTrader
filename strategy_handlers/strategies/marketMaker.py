@@ -46,36 +46,8 @@ class MarketMaker(Strategy):
         return runners
 
     def compute_hedge(self):
-        get_logger().debug("computing hedge", market_id = self.market_id)
 
-        back_position = 0
-        back_price = 0
-
-        lay_position = 0
-        lay_price = 0
-
-        for traded in self.matched_orders:
-            if traded["side"] == "BACK":
-                back_position += traded["size"]
-                back_price += traded["price"] * traded["size"]
-            if traded["side"] == "LAY":
-                lay_position += traded["size"]
-                lay_price += traded["price"] * traded["size"]
-        if back_position > 0:
-            back_price = back_price / back_position
-        if lay_position > 0:
-            lay_price = lay_price / lay_position
-
-        self.unhedged_position = back_price * back_position - lay_price * lay_position
-
-        get_logger().debug("back position", market_id = self.market_id,
-                           back = back_price, stake = back_position)
-
-        get_logger().debug("lay position",  market_id = self.market_id,
-                           lay = back_price, stake = back_position)
-
-        get_logger().debug("hedge", market_id=self.market_id,
-                           hedge = self.unhedged_position)
+        self.unhedged_position = self.pricer.compute_unhedged_position()
 
         if self.current_back is None:
             self.current_back = MIN_PRICE
@@ -120,8 +92,8 @@ class MarketMaker(Strategy):
                           selection_id = selection_id,
                           market_id = market_id)
 
-        executed_back = self.pricer_back.Price(price_back, size_back, Side.BACK)
-        executed_lay = self.pricer_lay.Price(price_lay, size_lay, Side.LAY)
+        executed_back = self.pricer.quote(price_back, size_back, Side.BACK)
+        executed_lay = self.pricer.quote(price_lay, size_lay, Side.LAY)
 
         get_logger().info("trade flag", traded = self.traded, market_id = self.market_id)
         return self.traded
@@ -147,20 +119,6 @@ class MarketMaker(Strategy):
 
         return profit
 
-    def get_matches(self):
-        self.pricer_back.get_betfair_matches(Side.BACK)
-        self.pricer_lay.get_betfair_matches(Side.LAY)
-        self.matched_orders = self.pricer_back.matched_order + self.pricer_lay.matched_order
-        self.non_matched_orders = self.pricer_back.unmatched_order + self.pricer_lay.unmatched_order
-
-    def get_placed_orders(self):
-        market_ids = [m["market_id"] for m in self.list_runner.values()]
-        get_placed_orders(self.client, market_ids=market_ids)
-
-    def get_bf_profit_and_loss(self):
-        market_ids = [m["market_id"] for m in self.list_runner.values()]
-        get_profit_and_loss(self.client, market_ids=market_ids)
-
     def looper(self):
         self.list_runner = self.create_runner_info()
         self.update_runner_current_price()
@@ -172,8 +130,6 @@ class MarketMaker(Strategy):
             return False
 
         get_logger().info("starting iteration", traded = self.traded, event_id = self.market_id)
-
-        self.get_matches()
 
         self.compute_hedge()
 
