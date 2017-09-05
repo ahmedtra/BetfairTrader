@@ -14,6 +14,8 @@ class positionFetcher(Selection):
         self.unmatched_order = []
         self.win = 0
         self.lost = 0
+        self.matches_back = []
+        self.matches_lay = []
 
     def get_betfair_matches(self, side = None):
         orders = get_placed_orders(self.client, market_ids=[self.market_id])
@@ -53,9 +55,9 @@ class positionFetcher(Selection):
 
     def compute_unhedged_position(self):
         matched_orders = []
-        matches_back = self.get_betfair_matches(Side.BACK)
+        self.matches_back = self.get_betfair_matches(Side.BACK)
         matched_orders = matched_orders + self.matched_order
-        matches_lay = self.get_betfair_matches(Side.LAY)
+        self.matches_lay = self.get_betfair_matches(Side.LAY)
         matched_orders = matched_orders + self.matched_order
         back_position = 0
         back_price = 0

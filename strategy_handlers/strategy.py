@@ -11,7 +11,7 @@ MIN_STAKE = 4
 
 class Strategy(ABC):
     def __init__(self, event_id, client):
-        get_logger().info("creating Runner_under_market", event_id = event_id)
+        get_logger().info("creating strategy", event_id = event_id)
         self.client = client
         self.current_back = None
         self.current_lay = None
