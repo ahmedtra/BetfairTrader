@@ -26,7 +26,8 @@ class MarketMaker(Strategy):
         self.market_id = self.list_runner[list(self.list_runner.keys())[0]]["market_id"]
         self.non_matched_orders = []
         self.matched_orders = []
-        self.pricer = Execution(self.client, self.market_id, self.selection_id)
+        self.customer_ref = "market_maker"
+        self.pricer = Execution(self.client, self.market_id, self.selection_id, self.customer_ref)
 
 
     def create_runner_info(self):
@@ -155,7 +156,7 @@ class MarketMaker(Strategy):
     def liquidate_non_active(self):
         for runner in self.list_runner.values():
             selection_id = runner["selection_id"]
-            market_id = runner["runner_id"]
+            market_id = runner["market_id"]
             if selection_id != self.selection_id:
                 self.cancel_all_pending_orders(selection_id, market_id)
                 self.liquidate(selection_id, market_id)

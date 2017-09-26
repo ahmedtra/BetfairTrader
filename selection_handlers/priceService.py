@@ -5,7 +5,7 @@ from betfair_wrapper.order_utils import get_price_market_selection
 from time import sleep
 from selection_handlers.selection import Selection
 class priceService(Selection):
-    def __init__(self, client, market_id, selection_id):
+    def __init__(self, client, market_id, selection_id, **kwargs):
         super(priceService, self).__init__(client, market_id, selection_id)
 
         self.current_orders = None

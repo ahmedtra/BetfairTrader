@@ -6,7 +6,7 @@ from betfair_wrapper.order_utils import get_placed_orders
 from selection_handlers.selection import Selection
 
 class positionFetcher(Selection):
-    def __init__(self, client, market_id, selection_id):
+    def __init__(self, client, market_id, selection_id, customer_order_ref = None):
         super(positionFetcher, self).__init__(client, market_id, selection_id)
 
         self.matches = []
@@ -18,6 +18,7 @@ class positionFetcher(Selection):
         self.matches_lay = []
         self.position_back = 0
         self.position_lay = 0
+        self.customer_order_ref = customer_order_ref
 
     def get_betfair_matches(self, side = None):
         orders = get_placed_orders(self.client, market_ids=[self.market_id])
@@ -27,6 +28,8 @@ class positionFetcher(Selection):
 
         for order in orders:
             if order.selection_id != self.selection_id:
+                continue
+            if order.customer_order_ref != self.customer_order_ref:
                 continue
 
             if side is not None:

@@ -9,8 +9,8 @@ from selection_handlers.priceService import priceService
 
 
 class Execution(positionFetcher, priceService):
-    def __init__(self, client, market_id, selection_id):
-        super(Execution, self).__init__(client, market_id, selection_id)
+    def __init__(self, client, market_id, selection_id, customer_order_ref = None):
+        super(Execution, self).__init__(client, market_id, selection_id, customer_order_ref)
 
         self.current_orders = None
         self.current_back = None
@@ -47,7 +47,7 @@ class Execution(positionFetcher, priceService):
             remaining_size = -difference_position
             get_logger().info("placing bet", current_price=self.current_back, current_size=self.current_size,
                               price=price, size=size)
-            match = place_bet(self.client, price, remaining_size, side, self.market_id, self.selection_id)
+            match = place_bet(self.client, price, remaining_size, side, self.market_id, self.selection_id, customer_order_ref = self.customer_order_ref)
             bet_id = match["bet_id"]
             if bet_id is None:
                 get_logger().info("order refused")

@@ -4,10 +4,7 @@ from betfair.models import PriceProjection, PlaceInstruction, LimitOrder, Replac
 
 soccer_type_ids = [1]
 
-
-
-
-def place_bet(client, price, size, side, market_id, selection_id):
+def place_bet(client, price, size, side, market_id, selection_id, customer_order_ref = None):
     size = round(size, 2)
     size_reduction = 0
     if size < 4:
@@ -22,10 +19,12 @@ def place_bet(client, price, size, side, market_id, selection_id):
     limit_order.size = max(size, 4)
     limit_order.persistence_type = PersistenceType.LAPSE
     order.limit_order = limit_order
+    if customer_order_ref is not None:
+        order.customer_order_ref = customer_order_ref
 
     instructions = [order]
 
-    response = client.place_orders(market_id, instructions)
+    response = client.place_orders(market_id, instructions, customer_order_ref)
 
     match = {}
     match["bet_id"] = response.instruction_reports[0].bet_id

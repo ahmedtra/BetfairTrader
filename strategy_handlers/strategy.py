@@ -15,6 +15,7 @@ class Strategy(ABC):
     def __init__(self, event_id, client, **params):
         get_logger().info("creating strategy", event_id = event_id)
         self.client = client
+        self.customer_ref = None
         self.current_back = None
         self.current_lay = None
         self.event_id = event_id
@@ -45,26 +46,26 @@ class Strategy(ABC):
 
     def cancel_all_pending_orders(self, selection_id = None, market_id = None):
         if selection_id is not None and market_id is not None:
-            executioner = Execution(self.client, market_id, selection_id)
+            executioner = Execution(self.client, market_id, selection_id, self.customer_ref)
             executioner.cancel_all_pending_orders()
             return
 
         for runner in self.list_runner.values():
             market_id = runner["market_id"]
             selection_id = runner["selection_id"]
-            executioner = Execution(self.client, market_id, selection_id)
+            executioner = Execution(self.client, market_id, selection_id, self.customer_ref)
             executioner.cancel_all_pending_orders()
 
     def liquidate(self, selection_id = None, market_id = None):
         if selection_id is not None and market_id is not None:
-            executioner = Execution(self.client, market_id, selection_id)
+            executioner = Execution(self.client, market_id, selection_id, self.customer_ref)
             executioner.cashout()
             return
 
         for runner in self.list_runner.values():
             market_id = runner["market_id"]
             selection_id = runner["selection_id"]
-            executioner = Execution(self.client, market_id, selection_id)
+            executioner = Execution(self.client, market_id, selection_id, self.customer_ref)
             executioner.cashout()
 
     @abstractmethod
