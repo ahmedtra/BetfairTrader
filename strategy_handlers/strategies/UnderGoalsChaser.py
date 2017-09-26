@@ -2,35 +2,25 @@ from betfair.constants import Side
 from betfair.price import price_ticks_away, nearest_price
 from structlog import get_logger
 
-from strategy_handlers_under_goals.priceChaser import PriceChaser
-from strategy_handlers_under_goals.utils import get_placed_orders, get_profit_and_loss, get_under_over_markets, \
-    get_runner_under, \
-    get_runner_prices
-from strategy_handlers_under_goals.pricer import Pricer
+from selection_handlers.execution import Execution
+from strategy_handlers.strategy import Strategy
+
+from betfair_wrapper.utils import get_markets, get_runner_under
+
 
 MAX_STAKE = 4
 MIN_STAKE = 4
 
-class Runners_Under_Market():
+class Runners_Under_Market(Strategy):
     def __init__(self, event_id, client):
-        get_logger().info("creating Runner_under_market", event_id = event_id)
-        self.client = client
+        super(Runners_Under_Market, self).__init__(event_id, client)
         self.target_profit = 5000
-        self.current_back = 1
-        self.current_lay = 1000
         self.event_id = event_id
-        self.stake = 0
-        self.pl = 0
-        self.already_traded = 0
-        self.active = 10
         self.traded = False
         self.list_runner = self.create_runner_info()
-        self.prices = {}
         self.win = {i:0 for i in range(9)}
         self.lost = {i:0 for i in range(9)}
         self.traded_account = []
-        self.inplay = False
-
 
     def find_most_active(self):
         most_active = 10
@@ -55,20 +45,9 @@ class Runners_Under_Market():
 
     def create_runner_info(self):
         get_logger().info("checking for runner under market", event_id = self.event_id)
-        markets = get_under_over_markets(self.client, self.event_id)
+        markets = get_markets(self.client, self.event_id, text_query="OVER_UNDER_*5")
         get_logger().info("got markets", number_markets = len(markets), event_id = self.event_id)
         return get_runner_under(markets)
-
-    def update_runner_current_price(self):
-        get_logger().info("retriving prices", event_id = self.event_id)
-        self.prices = get_runner_prices(self.client, self.list_runner)
-        for p in self.prices.values():
-            if p["lay"] is not None and p["back"] is not None:
-                p["spread"] = 2 * (p["lay"] - p["back"]) / (p["lay"] + p["back"]) * 100
-            else:
-                p["spread"] = None
-        get_logger().info("updated the prices", event_id = self.event_id)
-        return self.prices
 
     def compute_stake(self):
         get_logger().debug("computing stake", event_id = self.event_id)
@@ -107,8 +86,8 @@ class Runners_Under_Market():
                           spread = spread, selection_id = selection_id,
                           market_id = market_id, event_id = self.event_id)
         if price is not None and spread is not None and spread < 20:
-            price_chaser = PriceChaser(self.client, market_id, selection_id)
-            matches = price_chaser.chasePrice(price, size, Side.BACK)
+            price_chaser = Execution(self.client, market_id, selection_id)
+            matches = price_chaser.execute(price, size, Side.BACK)
             if matches is None:
                 self.traded = False
                 return self.traded
@@ -125,7 +104,7 @@ class Runners_Under_Market():
 
         selection_id = self.list_runner[self.active]["selection_id"]
         market_id = self.list_runner[self.active]["market_id"]
-        pc = PriceChaser(self.client, market_id=market_id, selection_id = selection_id)
+        pc = Execution(self.client, market_id=market_id, selection_id = selection_id)
 
         closed_market_outcome = 0
         for key in self.lost.keys():
@@ -147,14 +126,6 @@ class Runners_Under_Market():
         already_traded = 0
         for trades in self.traded_account:
             already_traded += trades["size"]
-
-    def get_placed_orders(self):
-        market_ids = [m["market_id"] for m in self.list_runner.values()]
-        get_placed_orders(self.client, market_ids=market_ids)
-
-    def get_bf_profit_and_loss(self):
-        market_ids = [m["market_id"] for m in self.list_runner.values()]
-        get_profit_and_loss(self.client, market_ids=market_ids)
 
     def looper(self):
         self.list_runner = self.create_runner_info()
@@ -202,66 +173,14 @@ class Runners_Under_Market():
            self.pl = self.compute_profit_loss()
            get_logger().info("profit and loss", pl = self.pl, event_id = self.event_id)
 
-        unhedged_position = self.compute_unhedged_position()
-        self.cashout(unhedged_position)
+        self.cashout()
         return True
 
-    def compute_unhedged_position(self):
+    def cashout(self):
         selection_id = self.list_runner[self.active]["selection_id"]
         market_id = self.list_runner[self.active]["market_id"]
-        pc = PriceChaser(self.client, market_id=market_id, selection_id=selection_id)
-        matched_orders = []
-        matches_back = pc.get_betfair_matches(Side.BACK)
-        matched_orders = matched_orders + pc.bet_fair_matches
-        matches_lay = pc.get_betfair_matches(Side.LAY)
-        matched_orders = matched_orders + pc.bet_fair_matches
-        back_position = 0
-        back_price = 0
-
-        lay_position = 0
-        lay_price = 0
-
-        for traded in matched_orders:
-            if traded["side"] == "BACK":
-                back_position += traded["size"]
-                back_price += traded["price"] * traded["size"]
-            if traded["side"] == "LAY":
-                lay_position += traded["size"]
-                lay_price += traded["price"] * traded["size"]
-        if back_position > 0:
-            back_price = back_price / back_position
-        if lay_position > 0:
-            lay_price = lay_price / lay_position
-
-
-
-        win_outcome = back_price * back_position - lay_price * lay_position
-        if win_outcome == 0:
-            win_outcome = self.win[self.active]
-
-        lost_outcome = - back_position + lay_position
-        if lost_outcome == 0:
-            lost_outcome = self.lost[self.active]
-
-        get_logger().debug("back position", market_id= market_id,
-                           back=back_price, stake=back_position)
-
-        get_logger().debug("lay position", market_id= market_id,
-                           lay=back_price, stake=back_position)
-
-        get_logger().info("win_outcome", market_id= market_id,
-                           hedge=win_outcome)
-        get_logger().info("loss_outcome", market_id= market_id,
-                           hedge=lost_outcome)
-
-        self.win[self.active] = win_outcome
-        self.lost[self.active] = lost_outcome
-        return win_outcome
-
-    def cashout(self, unhedged_position):
-        selection_id = self.list_runner[self.active]["selection_id"]
-        market_id = self.list_runner[self.active]["market_id"]
-        pc = PriceChaser(self.client, market_id=market_id, selection_id=selection_id)
+        pc = Execution(self.client, market_id=market_id, selection_id=selection_id)
+        unhedged_position = pc.compute_unhedged_position()
 
         if pc.ask_for_price():
             current_lay = pc.current_lay
@@ -272,9 +191,7 @@ class Runners_Under_Market():
             lay_hedge = unhedged_position / current_lay * 0.5
 
             if lay_hedge > self.target_profit:
-                lay_hedge = round(lay_hedge, 2)
-                get_logger().info("lquidating half position")
-                pc.chasePrice(current_lay, lay_hedge, Side.LAY, True)
+                pc.cashout(0.5)
 
     def place_passif_bet(self):
         selection_id = self.list_runner[self.active]["selection_id"]
@@ -284,7 +201,7 @@ class Runners_Under_Market():
             price = nearest_price(max(self.current_back * 10, 200))
         else:
             price = price_ticks_away(self.current_lay, -1)
-        pricer = Pricer(self.client, market_id, selection_id)
-        pricer.Price(price, size, Side.BACK)
+        pricer = Execution(self.client, market_id, selection_id)
+        pricer.quote(price, size, Side.BACK)
 
 

@@ -1,4 +1,4 @@
-from authenticate import authenticate
+from betfair_wrapper.authenticate import authenticate
 from list_team import team_list, over_under
 
 client = authenticate()
