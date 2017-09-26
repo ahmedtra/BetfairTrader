@@ -7,11 +7,11 @@ from betfair.models import MarketFilter, TimeRange
 from structlog import get_logger
 
 from betfair_wrapper.authenticate import authenticate
-from common import initialize_logging
-from strategy_handlers_draw.utils import client_manager
 
+from betfair_wrapper.authenticate import client_manager
+from strategy_handlers.strategyPlayer import StrategyPlayer
 class strategy_manager():
-    def __init__(self, strategy, event_id = None, time_filter = None, inplay_only = False):
+    def __init__(self, strategy, event_id = None, time_filter = None, inplay_only = False, **params):
         self.client = authenticate()
         self.type_ids = [1]
         self.queue = queue.Queue()
@@ -22,6 +22,7 @@ class strategy_manager():
         self.strategy = strategy
         self.client_manager.start()
         self.inplay_only = inplay_only
+        self.params = params
         if time_filter is None:
             self.time_filter_from = 30 * 5
             self.time_filter_to = 30
@@ -32,13 +33,25 @@ class strategy_manager():
     def retrieve_events(self):
         get_logger().info("fetching events")
         actual_time = datetime.now()
-        time_from = (actual_time - timedelta(minutes=self.time_filter_from)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
-        time_to = (actual_time + timedelta(minutes=self.time_filter_to)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        time_from = (actual_time - timedelta(hours=5)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        time_to = (actual_time + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
         events = self.client.list_events(
             MarketFilter(event_type_ids=self.type_ids, in_play_only = False,
                          market_start_time = TimeRange(from_ = time_from, to = time_to)),
         )
-        get_logger().info("fetching all events", number_events = len(events))
+        actual_time = datetime.utcnow()
+        time_from = (actual_time - timedelta(minutes=0)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        time_to = (actual_time + timedelta(minutes=120)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        try:
+            events = self.client.list_events(
+                MarketFilter(event_type_ids=self.type_ids, in_play_only = False,
+                             market_start_time = TimeRange(from_ = time_from, to = time_to)),
+            )
+        except:
+            get_logger().info("error while getting events")
+            sleep(10)
+            return self.retrieve_events()
+
         return events
 
     def event_generator(self):
@@ -69,7 +82,7 @@ class strategy_manager():
 
             event_id = event.event.id
             get_logger().info("creating thread for strategy", event_id = event_id, event_name = event.event.name)
-            self.thread_pool[event_id] = self.strategy(self.queue, self.client, event_id)
+            self.thread_pool[event_id] = StrategyPlayer(self.queue,  self.client, self.strategy, event_id, **self.params)
             self.thread_pool[event_id].start()
 
             if len(self.thread_pool) >= self.max_threads:
@@ -84,7 +97,3 @@ class strategy_manager():
         self.client_manager.join()
 
 
-
-if __name__ == "__main__":
-    sm = strategy_manager()
-    sm.manage_strategies()

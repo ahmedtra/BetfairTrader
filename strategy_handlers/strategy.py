@@ -6,11 +6,13 @@ from betfair_wrapper.utils import get_runner_prices
 
 from abc import ABC, abstractmethod
 
+from selection_handlers.execution import Execution
+
 MAX_STAKE = 4
 MIN_STAKE = 4
 
 class Strategy(ABC):
-    def __init__(self, event_id, client):
+    def __init__(self, event_id, client, **params):
         get_logger().info("creating strategy", event_id = event_id)
         self.client = client
         self.current_back = None
@@ -24,6 +26,7 @@ class Strategy(ABC):
         self.win = {}
         self.lost = {}
         self.inplay = False
+        self.params = params
 
     @abstractmethod
     def create_runner_info(self):
@@ -39,6 +42,30 @@ class Strategy(ABC):
                 p["spread"] = None
         get_logger().info("updated the prices", event_id = self.event_id)
         return self.prices
+
+    def cancel_all_pending_orders(self, selection_id = None, market_id = None):
+        if selection_id is not None and market_id is not None:
+            executioner = Execution(self.client, market_id, selection_id)
+            executioner.cancel_all_pending_orders()
+            return
+
+        for runner in self.list_runner.values():
+            market_id = runner["market_id"]
+            selection_id = runner["selection_id"]
+            executioner = Execution(self.client, market_id, selection_id)
+            executioner.cancel_all_pending_orders()
+
+    def liquidate(self, selection_id = None, market_id = None):
+        if selection_id is not None and market_id is not None:
+            executioner = Execution(self.client, market_id, selection_id)
+            executioner.cashout()
+            return
+
+        for runner in self.list_runner.values():
+            market_id = runner["market_id"]
+            selection_id = runner["selection_id"]
+            executioner = Execution(self.client, market_id, selection_id)
+            executioner.cashout()
 
     @abstractmethod
     def looper(self):

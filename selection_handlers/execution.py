@@ -103,7 +103,7 @@ class Execution(positionFetcher, priceService):
         elif unhedged_pos < 0:
             back_hedge = - unhedged_pos / self.current_back
             back_hedge = round(back_hedge, 2)
-            self.execute(self.current_lay, back_hedge, Side.LAY)
+            self.execute(self.current_back, back_hedge, Side.BACK)
 
     def cancel_all_pending_orders(self):
         self.get_betfair_matches()

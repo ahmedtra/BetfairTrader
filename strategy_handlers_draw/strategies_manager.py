@@ -33,6 +33,19 @@ class strategy_manager():
             MarketFilter(event_type_ids=self.type_ids, in_play_only = False,
                          market_start_time = TimeRange(from_ = time_from, to = time_to)),
         )
+        actual_time = datetime.utcnow()
+        time_from = (actual_time - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        time_to = (actual_time + timedelta(minutes=120)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        try:
+            events = self.client.list_events(
+                MarketFilter(event_type_ids=self.type_ids, in_play_only = False,
+                             market_start_time = TimeRange(from_ = time_from, to = time_to)),
+            )
+        except:
+            get_logger().info("error while getting events")
+            sleep(10)
+            return self.retrieve_events()
+
         get_logger().info("fetching all events", number_events = len(events))
         return events
 
@@ -51,9 +64,6 @@ class strategy_manager():
                 get_logger().info("found event to trade", event_name = event.event.name, event_id = event.event.id)
                 self.traded_events.append(event.event.id)
                 break
-
-
-
 
             if event is None:
                 get_logger().info("no event waiting")

@@ -6,14 +6,14 @@ import time
 import threading
 import queue
 import traceback
-class DrawStrategyPlayer(threading.Thread):
-    def __init__(self, queue, client, strategy, event_id, heartbeat = 30):
+class StrategyPlayer(threading.Thread):
+    def __init__(self, queue, client, strategy, event_id, heartbeat = 30, *params):
         threading.Thread.__init__(self)
         self.queue = queue
         self.client = client
         self.event = event_id
         self.heartbeat = heartbeat
-        self.strategy = strategy(event_id, client)
+        self.strategy = strategy(event_id, client, *params)
 
         get_logger().info("creating strategy", event_id = event_id, heartbeat = heartbeat, strategy = strategy)
 
@@ -26,6 +26,7 @@ class DrawStrategyPlayer(threading.Thread):
                 get_logger().error(traceback.format_exc())
                 still_alive = False
             if not still_alive:
+                self.strategy.cancel_all_pending_orders()
                 self.queue.put(self.event)
                 break
             sleep(self.heartbeat)

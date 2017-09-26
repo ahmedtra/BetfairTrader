@@ -1,6 +1,6 @@
-from betfair.constants import PriceData, OrderType, PersistenceType
+from betfair.constants import PriceData, OrderType, PersistenceType, RollupModel
 from betfair.models import PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
-    CancelInstruction
+    CancelInstruction, ExBestOffersOverrides
 
 soccer_type_ids = [1]
 
@@ -8,6 +8,7 @@ soccer_type_ids = [1]
 
 
 def place_bet(client, price, size, side, market_id, selection_id):
+    size = round(size, 2)
     size_reduction = 0
     if size < 4:
         size_reduction = 4 - size
@@ -38,6 +39,8 @@ def place_bet(client, price, size, side, market_id, selection_id):
 
 
 def cancel_order(client, market_id, bet_id, size_reduction=None):
+    if size_reduction is not None:
+        size_reduction = round(size_reduction, 2)
     instruction_cancel = CancelInstruction()
     instruction_cancel.bet_id = bet_id
     instruction_cancel.size_reduction = size_reduction
@@ -64,16 +67,23 @@ def replace_order(client, market_id, bet_id, new_price):
 def get_price_market_selection(client, market_id, selection_id):
     price_projection = PriceProjection()
     price_projection.price_data = [PriceData.EX_BEST_OFFERS]
+    price_projection.virtualise = True
+    price_projection.rollover_stakes = True
+    ex_best_offers_overrides = ExBestOffersOverrides()
+    ex_best_offers_overrides.best_prices_depth = 3
+    ex_best_offers_overrides.rollup_model = RollupModel.STAKE
+    ex_best_offers_overrides.rollup_limit = 1
+    price_projection.ex_best_offers_overrides = ex_best_offers_overrides
     books = client.list_market_book(market_ids=[market_id], price_projection=price_projection)
 
     for runner in books[0].runners:
         if runner.selection_id == selection_id:
             if len(runner.ex.available_to_back) == 0:
                 return None, None, None, None, None
-            back = runner.ex.available_to_back[0].quote
+            back = runner.ex.available_to_back[0].price
             lay = None
             if len(runner.ex.available_to_lay) != 0:
-                lay = runner.ex.available_to_lay[0].quote
+                lay = runner.ex.available_to_lay[0].price
             size = runner.ex.available_to_back[0].size
             orders = runner.orders
             status = runner.status

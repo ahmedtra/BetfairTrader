@@ -1,8 +1,8 @@
 import threading
 from time import sleep
 
-from betfair.constants import PriceData, MarketProjection
-from betfair.models import MarketFilter, PriceProjection
+from betfair.constants import PriceData, MarketProjection, MarketSort, RollupModel
+from betfair.models import MarketFilter, PriceProjection, ExBestOffersOverrides
 
 from betfair_wrapper.authenticate import authenticate
 
@@ -16,7 +16,8 @@ def get_markets(client, event_id, text_query = ""):
                      text_query = text_query,
                      event_ids = [event_id]),
         max_results=100,
-        market_projection=[v.name for v in MarketProjection]
+        market_projection=[v.name for v in MarketProjection],
+        sort = MarketSort.MAXIMUM_TRADED
     )
     return markets
 
@@ -58,7 +59,14 @@ def get_runner_under(markets):
 def get_runner_prices(client, runners):
     marketids = [market["market_id"] for market in runners.values()]
     price_projection = PriceProjection()
-    price_projection.price_data = [PriceData.EX_BEST_OFFERS]
+    price_projection.price_data = [v.name for v in PriceData]
+    price_projection.rollover_stakes = True
+    price_projection.virtualise = True
+    ex_best_offers_overrides = ExBestOffersOverrides()
+    ex_best_offers_overrides.best_prices_depth = 3
+    ex_best_offers_overrides.rollup_model = RollupModel.NONE
+    ex_best_offers_overrides.rollup_limit = 1
+    price_projection.ex_best_offers_overrides = ex_best_offers_overrides
     books = client.list_market_book(market_ids=marketids, price_projection=price_projection)
 
     selection_ids = {market["selection_id"]:s for s, market in runners.items()}
@@ -68,18 +76,17 @@ def get_runner_prices(client, runners):
                 if runner.status is not "ACTIVE":
                     continue
 
-                runners[selection_ids[runner.selection_id]] = {}
                 runners[selection_ids[runner.selection_id]]["stats"] = runner.status
                 runners[selection_ids[runner.selection_id]]["inplay"] = book.inplay
 
                 if len(runner.ex.available_to_lay) > 0:
-                    runners[selection_ids[runner.selection_id]]["lay"] = runner.ex.available_to_lay[0].quote
+                    runners[selection_ids[runner.selection_id]]["lay"] = runner.ex.available_to_lay[0].price
                     runners[selection_ids[runner.selection_id]]["lay_size"] = runner.ex.available_to_lay[0].size
                 else:
                     runners[selection_ids[runner.selection_id]]["lay"] = None
                     runners[selection_ids[runner.selection_id]]["lay_size"] = None
                 if len(runner.ex.available_to_back) > 0:
-                    runners[selection_ids[runner.selection_id]]["back"] = runner.ex.available_to_back[0].quote
+                    runners[selection_ids[runner.selection_id]]["back"] = runner.ex.available_to_back[0].price
                     runners[selection_ids[runner.selection_id]]["back_size"] = runner.ex.available_to_back[0].size
                 else:
                     runners[selection_ids[runner.selection_id]]["back"] = None

@@ -13,12 +13,16 @@ MAX_STAKE = 4
 MIN_STAKE = 4
 
 class Draw_Market(Strategy):
-    def __init__(self, event_id, client):
-        super(Draw_Market, self).__init__(event_id, client)
+    def __init__(self, event_id, client, **params):
+        super(Draw_Market, self).__init__(event_id, client, **params)
         get_logger().info("creating Runner_under_market", event_id = event_id)
         self.target_profit = 5000
         self.the_draw = None
         self.traded = False
+        if "thresh_draw" in params.keys():
+            self.draw_limit = nearest_price(params["thresh_draw"])
+        else:
+            self.draw_limit = 1.01
 
     def create_runner_info(self):
         get_logger().info("checking for runner under market", event_id = self.event_id)
@@ -144,8 +148,8 @@ class Draw_Market(Strategy):
                                       spread=self.prices[self.the_draw]["back"], event_id=self.event_id)
                     return False
 
-                if self.prices[self.the_draw]["back"] < 1.2:
-                    get_logger().info("very low price, taking loss, quitting",
+                if self.prices[self.the_draw]["back"] < self.draw_limit:
+                    get_logger().info("very low price, quitting",
                                       spread=self.prices[self.the_draw]["back"], event_id=self.event_id)
                     return False
 
@@ -166,7 +170,10 @@ class Draw_Market(Strategy):
             price = nearest_price(max(self.current_back * 10, 200))
         else:
             price = price_ticks_away(self.current_lay, -1)
+
+        price = max(self.draw_limit, price)
         pricer = Execution(self.client, market_id, selection_id)
         pricer.quote(price, size, Side.BACK)
+
 
 

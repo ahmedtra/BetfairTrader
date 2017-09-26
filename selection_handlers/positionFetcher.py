@@ -3,7 +3,7 @@ from structlog import get_logger
 
 from betfair_wrapper.order_utils import get_placed_orders
 
-from selection_handlers import Selection
+from selection_handlers.selection import Selection
 
 class positionFetcher(Selection):
     def __init__(self, client, market_id, selection_id):
@@ -16,6 +16,8 @@ class positionFetcher(Selection):
         self.lost = 0
         self.matches_back = []
         self.matches_lay = []
+        self.position_back = 0
+        self.position_lay = 0
 
     def get_betfair_matches(self, side = None):
         orders = get_placed_orders(self.client, market_ids=[self.market_id])
@@ -43,13 +45,18 @@ class positionFetcher(Selection):
 
             if order.status == "EXECUTABLE":
                 non_match["bet_id"] = order.bet_id
-                non_match["price"] = order.price_size.quote
+                non_match["price"] = order.price_size
                 non_match["size"] = order.size_remaining
                 non_match["side"] = order.side
                 non_matches.append(non_match)
 
         self.matched_order = matches
         self.unmatched_order = non_matches
+
+        if side == Side.BACK:
+            self.position_back = market_position
+        if side == Side.LAY:
+            self.position_lay = market_position
 
         return market_position
 
