@@ -12,9 +12,9 @@ from strategy_handlers.strategy import Strategy
 MAX_STAKE = 4
 MIN_STAKE = 4
 
-class Draw_Market(Strategy):
+class DrawChaser(Strategy):
     def __init__(self, event_id, client, **params):
-        super(Draw_Market, self).__init__(event_id, client, **params)
+        super(DrawChaser, self).__init__(event_id, client, **params)
         get_logger().info("creating Runner_under_market", event_id = event_id)
         self.target_profit = 5000
         self.the_draw = None
