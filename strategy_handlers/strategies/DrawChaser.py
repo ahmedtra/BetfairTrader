@@ -19,6 +19,7 @@ class Draw_Market(Strategy):
         self.target_profit = 5000
         self.the_draw = None
         self.traded = False
+        self.customer_ref = "draw"
         if "thresh_draw" in params.keys():
             self.draw_limit = nearest_price(params["thresh_draw"])
         else:
@@ -80,7 +81,7 @@ class Draw_Market(Strategy):
                           spread = spread, selection_id = selection_id,
                           market_id = market_id, event_id = self.event_id)
         if price is not None and spread is not None and spread < 20:
-            price_chaser = Execution(self.client, market_id, selection_id)
+            price_chaser = Execution(self.client, market_id, selection_id, self.customer_ref)
             matches = price_chaser.execute(price, size, Side.BACK)
             if matches is None:
                 self.traded = False
@@ -96,7 +97,7 @@ class Draw_Market(Strategy):
     def compute_profit_loss(self):
         selection_id = self.list_runner[self.the_draw]["selection_id"]
         market_id = self.list_runner[self.the_draw]["market_id"]
-        pc = Execution(self.client, market_id=market_id, selection_id = selection_id)
+        pc = Execution(self.client, market_id=market_id, selection_id = selection_id, customer_order_ref= self.customer_ref)
 
         closed_market_outcome = 0
         for key in self.lost.keys():
@@ -172,7 +173,7 @@ class Draw_Market(Strategy):
             price = price_ticks_away(self.current_lay, -1)
 
         price = max(self.draw_limit, price)
-        pricer = Execution(self.client, market_id, selection_id)
+        pricer = Execution(self.client, market_id, selection_id, self.customer_ref)
         pricer.quote(price, size, Side.BACK)
 
 
