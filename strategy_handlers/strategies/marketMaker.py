@@ -4,7 +4,6 @@ from structlog import get_logger
 from betfair_wrapper.utils import get_markets, get_runners
 from selection_handlers.execution import Execution
 from strategy_handlers.strategy import Strategy
-from strategy_handlers_market_maker.pricer import Pricer
 
 
 from betfair.price import price_ticks_away, ticks_difference, MIN_PRICE, MAX_PRICE

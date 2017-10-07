@@ -11,29 +11,37 @@ from betfair_wrapper.authenticate import authenticate
 from betfair_wrapper.authenticate import client_manager
 from strategy_handlers.strategyPlayer import StrategyPlayer
 class strategy_manager():
-    def __init__(self, strategy, event_id = None, time_filter = None, inplay_only = False, **params):
+    def __init__(self, strategy, event_id = None, number_threads = 1, time_filter = None, inplay_only = False, **params):
         self.client = authenticate()
         self.type_ids = [1]
         self.queue = queue.Queue()
         self.thread_pool = {}
-        self.max_threads = 1
+        self.max_threads = number_threads
         self.traded_events = []
         self.client_manager = client_manager(self.client)
         self.strategy = strategy
         self.client_manager.start()
         self.inplay_only = inplay_only
         self.params = params
+        self.event_id = event_id
+
         if time_filter is None:
-            self.time_filter_from = 30 * 5
-            self.time_filter_to = 30
+            self.time_filter_from = -60*1
+            self.time_filter_to = 60*1
         else:
             self.time_filter_from = time_filter[0]
             self.time_filter_to = time_filter[1]
 
     def retrieve_events(self):
         get_logger().info("fetching events")
+        if self.event_id is not None:
+            events = self.client.list_events(
+                MarketFilter(event_ids=[self.event_id])
+            )
+            return events
+
         actual_time = datetime.utcnow()
-        time_from = (actual_time - timedelta(minutes=self.time_filter_from)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        time_from = (actual_time + timedelta(minutes=self.time_filter_from)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
         time_to = (actual_time + timedelta(minutes=self.time_filter_to)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
         try:
             events = self.client.list_events(
