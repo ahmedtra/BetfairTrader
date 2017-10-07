@@ -15,8 +15,8 @@ class RFRPredictor():
         self.min_odds = min_odds
         self.max_odds = max_odds
         self.min_pred = min_pred
-        self.models = read_models(self.pred_file, self.runners)
-        self.encoder = read_encoder(self.encoder_file)
+        self.models = self.read_models(self.pred_file, self.runners)
+        self.encoder = self.read_encoder(self.encoder_file)
         
     def read_models(self, file, runners):
         models = {}
@@ -67,4 +67,4 @@ class RFRPredictor():
                 stake_adjusted = stake_adjusted * max(min(pred[target], 5), 0.5)
             return target, stake_adjusted
         else:
-            return None, 0
+            return target, 0

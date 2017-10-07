@@ -30,6 +30,7 @@ def get_runners(markets):
             selection_id = runner.selection_id
             runner_list[selection_id] = {}
             runner_list[selection_id] = runner._data
+            runner_list[selection_id]["market_name"] = market_name
             runner_list[selection_id]["market_id"] = market._data["market_id"]
             runner_list[selection_id]["market_start_time"] = market._data["market_start_time"]
             runner_list[selection_id]["event_name"] = market._data["event"]["name"]

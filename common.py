@@ -49,6 +49,7 @@ def get_config():
     config.read(config_path)
     return config
 
+
 def get_data_path():
     conf = get_config()
     data_path = os.path.join(conf.get("files", "root"), conf.get("files", "histdata"))
