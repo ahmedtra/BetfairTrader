@@ -27,7 +27,7 @@ class strategy_manager():
 
         if time_filter is None:
             self.time_filter_from = -60*1
-            self.time_filter_to = 60*1
+            self.time_filter_to = 60*2
         else:
             self.time_filter_from = time_filter[0]
             self.time_filter_to = time_filter[1]
@@ -63,7 +63,8 @@ class strategy_manager():
                 event = events.pop()
 
                 if event.event.id in self.traded_events:
-                    get_logger().info("found already traded", event_name=event.event.name, event_id=event.event.id)
+                    get_logger().info("found already traded", event_name=event.event.name, event_id=event.event.id,
+                                      numer_event_traded = len(self.traded_events))
                     event = None
                     continue
 

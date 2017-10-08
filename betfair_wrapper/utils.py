@@ -61,12 +61,12 @@ def get_runner_prices(client, runners):
     marketids = [market["market_id"] for market in runners.values()]
     price_projection = PriceProjection()
     price_projection.price_data = [v.name for v in PriceData]
-    price_projection.rollover_stakes = True
-    price_projection.virtualise = True
+    price_projection.rollover_stakes = False
+    price_projection.virtualise = False
     ex_best_offers_overrides = ExBestOffersOverrides()
-    ex_best_offers_overrides.best_prices_depth = 3
-    ex_best_offers_overrides.rollup_model = RollupModel.NONE
-    ex_best_offers_overrides.rollup_limit = 1
+    ex_best_offers_overrides.best_prices_depth = 1
+    ex_best_offers_overrides.rollup_model = RollupModel.STAKE
+    ex_best_offers_overrides.rollup_limit = 0
     price_projection.ex_best_offers_overrides = ex_best_offers_overrides
     books = client.list_market_book(market_ids=marketids, price_projection=price_projection)
 

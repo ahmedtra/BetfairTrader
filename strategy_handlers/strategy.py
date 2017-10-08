@@ -1,6 +1,7 @@
-
+from betfair.constants import Side
+from betfair.price import price_ticks_away, nearest_price
 from structlog import get_logger
-
+from datetime import datetime
 
 from betfair_wrapper.utils import get_runner_prices
 
@@ -28,6 +29,15 @@ class Strategy(ABC):
         self.lost = {}
         self.inplay = False
         self.params = params
+        self.customer_ref_id = 0
+
+    def generate_oder_id(self, selection_id):
+        time = datetime.now().strftime("%y%m%d%H%M%S")
+        if self.customer_ref is None:
+            return None
+        ref = self.customer_ref + "_" + str(self.customer_ref_id) + str(selection_id) + time
+        self.customer_ref_id =self.customer_ref_id +1
+        return ref
 
     @abstractmethod
     def create_runner_info(self):
@@ -67,6 +77,46 @@ class Strategy(ABC):
             selection_id = runner["selection_id"]
             executioner = Execution(self.client, market_id, selection_id, self.customer_ref)
             executioner.cashout()
+
+    def passif_bet(self,  selection_id, stake, per_of_spread = 1.0, max_odds =200, min_odds=1.01, odds_multip_if_no_spread = 10):
+        selection_id = self.list_runner[selection_id]["selection_id"]
+        market_id = self.list_runner[selection_id]["market_id"]
+        size = stake
+        if self.current_lay is None:
+            price = nearest_price(max(self.current_back * odds_multip_if_no_spread, max_odds))
+        else:
+            price = price_ticks_away(self.current_lay, -1) * (per_of_spread) + self.current_back * (1-per_of_spread)
+            price = nearest_price(price)
+
+        price = max(min_odds, price)
+        ref_order = self.generate_oder_id(selection_id)
+        pricer = Execution(self.client, market_id, selection_id, ref_order)
+        pricer.quote(price, size, Side.BACK)
+
+    def bet(self, selection_id, stake, spread_condition=20):
+        price = self.prices[selection_id]["back"]
+        size = stake
+        spread = self.prices[selection_id]["spread"]
+        selection_id = self.list_runner[selection_id]["selection_id"]
+        market_id = self.list_runner[selection_id]["market_id"]
+
+        get_logger().info("placing bet", price=price, size=size,
+                          spread=spread, selection_id=selection_id,
+                          market_id=market_id, event_id=self.event_id)
+        if price is not None and spread is not None and spread < spread_condition:
+            ref = self.generate_oder_id(selection_id)
+            price_chaser = Execution(self.client, market_id, selection_id, ref)
+            matches = price_chaser.execute(price, size, Side.BACK)
+            if matches is None:
+                traded = False
+                return traded
+            traded = True
+        else:
+            get_logger().info("trade condition was not met, skipping ...", event_id=self.event_id)
+            traded = False
+
+        get_logger().info("trade flag", traded=traded, event_id=self.event_id)
+        return traded
 
     @abstractmethod
     def looper(self):

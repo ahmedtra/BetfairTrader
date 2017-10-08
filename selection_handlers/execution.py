@@ -41,7 +41,7 @@ class Execution(positionFetcher, priceService):
         difference_position = well_priced_position - betting_size
 
         if difference_position >0:
-            cancel_order(self.client, self.market_id, well_priced_orders[-1].bet_id, difference_position)
+            cancel_order(self.client, self.market_id, well_priced_orders[-1]["bet_id"], difference_position)
 
         elif difference_position<0:
             remaining_size = -difference_position

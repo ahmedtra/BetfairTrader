@@ -42,19 +42,21 @@ class MLPredictor(Strategy):
         get_logger().info("getting draw runner")
 
         for runner in self.prices.values():
+            inplay = runner["inplay"]
+            price = runner["back"] if inplay else (runner["back"] + runner["lay"]) * 0.5
             if runner["selection_id"] not in self.win.keys():
                 self.win[runner["selection_id"]] = 0
                 self.lost[runner["selection_id"]] = 0
             if self.split_team(runner["event_name"], 0) == runner["runner_name"]:
                 self.regressor["team1"] = runner["runner_name"]
-                self.regressor["1"] = runner["back"]
+                self.regressor["1"] = price
                 self.regressor_team_map["1"] = runner["selection_id"]
             elif self.split_team(runner["event_name"], 1) == runner["runner_name"]:
                 self.regressor["team2"] = runner["runner_name"]
-                self.regressor["2"] = runner["back"]
+                self.regressor["2"] = price
                 self.regressor_team_map["2"] = runner["selection_id"]
             elif runner["runner_name"] == "The Draw":
-                self.regressor["x"] = runner["back"]
+                self.regressor["x"] = price
                 self.regressor_team_map["x"] = runner["selection_id"]
 
     @staticmethod
@@ -72,7 +74,6 @@ class MLPredictor(Strategy):
         get_logger().debug("computing stake", event_id = self.event_id)
 
         self.bet, self.stake = self.predictor.get_bet(self.regressor)
-
         self.bet_selection_id = self.regressor_team_map[self.bet]
 
         self.current_back = self.prices[self.bet_selection_id]["back"]
@@ -94,30 +95,6 @@ class MLPredictor(Strategy):
                               stake = self.stake, price = self.current_back, event_id = self.event_id)
 
         return self.stake
-
-    def place_bet(self):
-        price = self.current_back
-        size = self.stake
-        spread = self.prices[self.bet_selection_id]["spread"]
-        selection_id = self.list_runner[self.bet_selection_id]["selection_id"]
-        market_id = self.list_runner[self.bet_selection_id]["market_id"]
-
-        get_logger().info("placing bet", price = price, size = size,
-                          spread = spread, selection_id = selection_id,
-                          market_id = market_id, event_id = self.event_id)
-        if price is not None and spread is not None and spread < 20:
-            price_chaser = Execution(self.client, market_id, selection_id, self.customer_ref)
-            matches = price_chaser.execute(price, size, Side.BACK)
-            if matches is None:
-                self.traded = False
-                return self.traded
-            self.traded = True
-        else:
-            get_logger().info("trade condition was not met, skipping ...", event_id = self.event_id)
-            self.traded = False
-
-        get_logger().info("trade flag", traded = self.traded, event_id = self.event_id)
-        return self.traded
 
     def compute_profit_loss(self):
         selection_id = self.list_runner[self.bet_selection_id]["selection_id"]
@@ -152,7 +129,11 @@ class MLPredictor(Strategy):
         self.get_regressors()
 
         if not self.traded:
+            last_stake = self.stake
+            old_bet = self.bet_selection_id
             self.compute_stake()
+            if old_bet != self.bet_selection_id or ((self.stake == 0) and last_stake > 0):
+                self.cancel_all_pending_orders()
 
             self.inplay = self.prices[self.bet_selection_id]["inplay"]
 
@@ -160,13 +141,18 @@ class MLPredictor(Strategy):
                 get_logger().info("no b, quitting strategy", event_id=self.event_id)
                 return False
 
-            if self.stake == 0:
-                return True
+
 
             if not self.inplay:
-                self.place_passif_bet()
+                if self.stake == 0:
+                    return True
+                self.passif_bet(self.bet_selection_id, self.stake, min_odds=self.min_odds, per_of_spread=0.8)
             else:
+                if self.stake == 0:
+                    get_logger().info("no signal at the start of the game",
+                                       event_id=self.event_id)
 
+                    return False
                 if self.prices[self.bet_selection_id]["spread"] > 20 and self.already_traded == 0:
                     get_logger().info("very wide spread, strategy not invested, quitting",
                                       spread=self.prices[self.bet_selection_id]["spread"], event_id=self.event_id)
@@ -182,7 +168,7 @@ class MLPredictor(Strategy):
                                       spread=self.prices[self.bet_selection_id]["back"], event_id=self.event_id)
                     return False
 
-                self.place_bet()
+                self.traded = self.bet(self.bet_selection_id, self.stake)
 
         else:
            self.pl = self.compute_profit_loss()
@@ -190,18 +176,6 @@ class MLPredictor(Strategy):
 
         return True
 
-    def place_passif_bet(self):
-        selection_id = self.list_runner[self.bet_selection_id]["selection_id"]
-        market_id = self.list_runner[self.bet_selection_id]["market_id"]
-        size = self.stake
-        if self.current_lay is None:
-            price = nearest_price(max(self.current_back * 10, 200))
-        else:
-            price = price_ticks_away(self.current_lay, -1)
-
-        price = max(self.min_odds, price)
-        pricer = Execution(self.client, market_id, selection_id, self.customer_ref)
-        pricer.quote(price, size, Side.BACK)
 
 
 
