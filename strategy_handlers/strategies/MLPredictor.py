@@ -50,13 +50,16 @@ class MLPredictor(Strategy):
             if self.split_team(runner["event_name"], 0) == runner["runner_name"]:
                 self.regressor["team1"] = runner["runner_name"]
                 self.regressor["1"] = price
+                self.regressor["1_back"] = runner["back"]
                 self.regressor_team_map["1"] = runner["selection_id"]
             elif self.split_team(runner["event_name"], 1) == runner["runner_name"]:
                 self.regressor["team2"] = runner["runner_name"]
                 self.regressor["2"] = price
+                self.regressor["2_back"] = runner["back"]
                 self.regressor_team_map["2"] = runner["selection_id"]
             elif runner["runner_name"] == "The Draw":
                 self.regressor["x"] = price
+                self.regressor["x_back"] = runner["back"]
                 self.regressor_team_map["x"] = runner["selection_id"]
 
     @staticmethod

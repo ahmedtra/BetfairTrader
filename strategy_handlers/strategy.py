@@ -27,15 +27,7 @@ class Strategy(ABC):
         self.lost = {}
         self.inplay = False
         self.params = params
-        self.customer_ref_id = 0
 
-    def generate_oder_id(self, selection_id):
-        time = datetime.now().strftime("%y%m%d%H%M%S")
-        if self.customer_ref is None:
-            return None
-        ref = self.customer_ref + "_" + str(self.customer_ref_id) + str(selection_id) + time
-        self.customer_ref_id =self.customer_ref_id +1
-        return ref
 
     @abstractmethod
     def create_runner_info(self):
@@ -89,8 +81,7 @@ class Strategy(ABC):
             price = nearest_price(price)
 
         price = max(min_odds, price)
-        ref_order = self.generate_oder_id(selection_id)
-        pricer = Execution(market_id, selection_id, ref_order)
+        pricer = Execution(market_id, selection_id, self.customer_ref)
         pricer.quote(price, size, Side.BACK)
 
     def bet(self, selection_id, stake, spread_condition=20):
@@ -104,8 +95,7 @@ class Strategy(ABC):
                           spread=spread, selection_id=selection_id,
                           market_id=market_id, event_id=self.event_id)
         if price is not None and spread is not None and spread < spread_condition:
-            ref = self.generate_oder_id(selection_id)
-            price_chaser = Execution(market_id, selection_id, ref)
+            price_chaser = Execution(market_id, selection_id, self.customer_ref)
             matches = price_chaser.execute(price, size, Side.BACK)
             if matches is None:
                 traded = False

@@ -1,6 +1,6 @@
 from betfair.constants import Side
 from structlog import get_logger
-
+from datetime import datetime
 from betfair_wrapper.betfair_wrapper_api import get_api
 
 from selection_handlers.positionFetcher import positionFetcher
@@ -16,6 +16,7 @@ class Execution(positionFetcher, priceService):
         self.current_lay = None
         self.current_size = None
         self.status = None
+        self.customer_ref_id = 0
 
     def quote(self, price, size, side):
         tradable = self.ask_for_price()
@@ -46,7 +47,8 @@ class Execution(positionFetcher, priceService):
             remaining_size = -difference_position
             get_logger().info("placing bet", current_price=self.current_back, current_size=self.current_size,
                               price=price, size=size)
-            match = get_api().place_bet(price, remaining_size, side, self.market_id, self.selection_id, customer_order_ref = self.customer_order_ref)
+            ref = self.generate_oder_id(self.selection_id)
+            match = get_api().place_bet(price, remaining_size, side, self.market_id, self.selection_id, customer_order_ref = ref)
             bet_id = match["bet_id"]
             if bet_id is None:
                 get_logger().info("order refused")
@@ -84,7 +86,9 @@ class Execution(positionFetcher, priceService):
             remaining_size = -difference_position
             get_logger().info("placing bet", current_price=self.current_back, current_size=self.current_size,
                               price=price, size=size)
-            match = get_api().place_bet(price, remaining_size, side, self.market_id, self.selection_id)
+            ref = self.generate_oder_id(self.selection_id)
+            match = get_api().place_bet(price, remaining_size, side, self.market_id, self.selection_id,
+                                        customer_order_ref=ref)
             bet_id = match["bet_id"]
             if bet_id is None:
                 get_logger().info("order refused")
@@ -114,3 +118,11 @@ class Execution(positionFetcher, priceService):
         for match in self.matches:
             sum += match["size"]
         return sum
+
+    def generate_oder_id(self, selection_id):
+        time = datetime.now().strftime("%y%m%d%H%M%S")
+        if self.customer_ref is None:
+            return None
+        ref = self.customer_ref + "_" + str(self.customer_ref_id) + str(selection_id) + time
+        self.customer_ref_id =self.customer_ref_id +1
+        return ref
