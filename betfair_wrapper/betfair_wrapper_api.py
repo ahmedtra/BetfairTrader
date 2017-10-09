@@ -24,7 +24,7 @@ def handle_connection(func):
                     try:
                         response = func(*args, **kwargs)
                     except Exception as e:
-                        get_logger.info(e)
+                        get_logger().info(e)
                         self.client = get_client(True)
                         tries += 1
                         sleep(tries * 30)
