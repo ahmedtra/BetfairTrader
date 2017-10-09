@@ -28,22 +28,6 @@ def authenticate():
 
     return client
 
-class client_manager(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self._stop_event = threading.Event()
-
-    def run(self):
-        while True:
-            sleep(600)
-            get_client().keep_alive()
-
-    def stop(self):
-        self._stop_event.set()
-
-    def stopped(self):
-        return self._stop_event.is_set()
-
 @singleton
 def get_client(reconnect = False):
     global client

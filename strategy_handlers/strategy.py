@@ -53,6 +53,7 @@ class Strategy(ABC):
         return self.prices
 
     def cancel_all_pending_orders(self, selection_id = None, market_id = None):
+        get_logger().info("cancelling all orders", event_id = self.event_id)
         if selection_id is not None and market_id is not None:
             executioner = Execution(market_id, selection_id, self.customer_ref)
             executioner.cancel_all_pending_orders()
@@ -65,6 +66,7 @@ class Strategy(ABC):
             executioner.cancel_all_pending_orders()
 
     def liquidate(self, selection_id = None, market_id = None):
+        get_logger().info("liquidating all positions", event_id=self.event_id)
         if selection_id is not None and market_id is not None:
             executioner = Execution(market_id, selection_id, self.customer_ref)
             executioner.cashout()

@@ -228,6 +228,10 @@ class BetfairApiWrapper():
         return runners
 
     @handle_connection
+    def keep_alive(self):
+        self.client.keep_alive()
+
+    @handle_connection
     def get_events(self, event_id = None, type_ids = None, inplay = False, time_from = None, time_to = None):
         if event_id is not None:
             events = self.client.list_events(
@@ -249,6 +253,23 @@ def get_api():
         api = BetfairApiWrapper()
 
     return api
+
+class client_manager(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self._stop_event = threading.Event()
+
+    def run(self):
+        while True:
+            sleep(600)
+            get_api().keep_alive()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
+
 
 class ApiFailure(Exception):
     def __init__(self,message):

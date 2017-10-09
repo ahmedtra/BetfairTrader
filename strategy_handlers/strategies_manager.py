@@ -6,9 +6,8 @@ from time import sleep
 
 from structlog import get_logger
 
-from betfair_wrapper.betfair_wrapper_api import get_api
+from betfair_wrapper.betfair_wrapper_api import get_api, client_manager
 
-from betfair_wrapper.authenticate import client_manager
 from strategy_handlers.strategyPlayer import StrategyPlayer
 class strategy_manager():
     def __init__(self, strategy, event_id = None, number_threads = 1, time_filter = None, inplay_only = False, **params):

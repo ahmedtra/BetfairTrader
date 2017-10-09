@@ -29,7 +29,7 @@ class positionFetcher(Selection):
         for order in orders:
             if order.selection_id != self.selection_id:
                 continue
-            if self.customer_order_ref in order.customer_order_ref:
+            if self.customer_order_ref not in order.customer_order_ref:
                 continue
 
             if side is not None:

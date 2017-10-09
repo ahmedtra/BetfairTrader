@@ -132,7 +132,7 @@ class MLPredictor(Strategy):
             last_stake = self.stake
             old_bet = self.bet_selection_id
             self.compute_stake()
-            if old_bet != self.bet_selection_id or ((self.stake == 0) and last_stake > 0):
+            if old_bet != self.bet_selection_id:
                 self.cancel_all_pending_orders()
 
             self.inplay = self.prices[self.bet_selection_id]["inplay"]
@@ -145,6 +145,7 @@ class MLPredictor(Strategy):
 
             if not self.inplay:
                 if self.stake == 0:
+                    self.cancel_all_pending_orders()
                     return True
                 self.passif_bet(self.bet_selection_id, self.stake, min_odds=self.min_odds, per_of_spread=0.8)
             else:
