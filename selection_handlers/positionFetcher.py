@@ -2,7 +2,6 @@ from betfair.constants import Side
 from structlog import get_logger
 
 from betfair_wrapper.authenticate import get_api
-from betfair_wrapper.order_utils import get_placed_orders
 
 from selection_handlers.selection import Selection
 

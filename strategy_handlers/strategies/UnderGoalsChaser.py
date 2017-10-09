@@ -6,9 +6,6 @@ from betfair_wrapper.authenticate import get_api
 from selection_handlers.execution import Execution
 from strategy_handlers.strategy import Strategy
 
-from betfair_wrapper.utils import get_markets, get_runner_under
-
-
 MAX_STAKE = 4
 MIN_STAKE = 4
 
