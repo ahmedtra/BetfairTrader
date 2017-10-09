@@ -2,9 +2,18 @@ import threading
 from time import sleep
 
 from betfair.betfair import Betfair
-from common import get_config, get_certif_path
+
+from betfair_wrapper.betfair_wrapper_api import BetfairApiWrapper
+from common import get_config, get_certif_path, singleton
 
 from structlog import get_logger
+
+
+client = None
+client_lock = threading.Lock()
+
+api = None
+
 
 def authenticate():
     conf = get_config()
@@ -26,16 +35,36 @@ def authenticate():
 class client_manager(threading.Thread):
     def __init__(self, client):
         threading.Thread.__init__(self)
-        self.client = client
         self._stop_event = threading.Event()
 
     def run(self):
         while True:
             sleep(600)
-            self.client.keep_alive()
+            get_client().keep_alive()
 
     def stop(self):
         self._stop_event.set()
 
     def stopped(self):
         return self._stop_event.is_set()
+
+@singleton
+def get_client(reconnect = False):
+    global client
+    global client_lock
+    with client_lock:
+        if client is None or reconnect:
+            client = authenticate()
+    return client
+
+
+@singleton
+def get_api():
+    global api
+
+    if api is None:
+        api = BetfairApiWrapper()
+
+    return api
+
+
