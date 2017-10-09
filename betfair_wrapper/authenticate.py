@@ -33,7 +33,7 @@ def authenticate():
     return client
 
 class client_manager(threading.Thread):
-    def __init__(self, client):
+    def __init__(self):
         threading.Thread.__init__(self)
         self._stop_event = threading.Event()
 

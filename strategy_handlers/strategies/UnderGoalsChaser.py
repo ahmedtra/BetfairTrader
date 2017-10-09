@@ -2,6 +2,7 @@ from betfair.constants import Side
 from betfair.price import price_ticks_away, nearest_price
 from structlog import get_logger
 
+from betfair_wrapper.authenticate import get_api
 from selection_handlers.execution import Execution
 from strategy_handlers.strategy import Strategy
 
@@ -12,8 +13,8 @@ MAX_STAKE = 4
 MIN_STAKE = 4
 
 class Runners_Under_Market(Strategy):
-    def __init__(self, event_id, client):
-        super(Runners_Under_Market, self).__init__(event_id, client)
+    def __init__(self, event_id):
+        super(Runners_Under_Market, self).__init__(event_id)
         self.target_profit = 5000
         self.event_id = event_id
         self.traded = False
@@ -45,9 +46,9 @@ class Runners_Under_Market(Strategy):
 
     def create_runner_info(self):
         get_logger().info("checking for runner under market", event_id = self.event_id)
-        markets = get_markets(self.client, self.event_id, text_query="OVER_UNDER_*5")
+        markets = get_api().get_markets(self.event_id, text_query="OVER_UNDER_*5")
         get_logger().info("got markets", number_markets = len(markets), event_id = self.event_id)
-        return get_runner_under(markets)
+        return get_api().get_runner_under(markets)
 
     def compute_stake(self):
         get_logger().debug("computing stake", event_id = self.event_id)
@@ -86,7 +87,7 @@ class Runners_Under_Market(Strategy):
                           spread = spread, selection_id = selection_id,
                           market_id = market_id, event_id = self.event_id)
         if price is not None and spread is not None and spread < 20:
-            price_chaser = Execution(self.client, market_id, selection_id)
+            price_chaser = Execution(market_id, selection_id)
             matches = price_chaser.execute(price, size, Side.BACK)
             if matches is None:
                 self.traded = False
@@ -104,7 +105,7 @@ class Runners_Under_Market(Strategy):
 
         selection_id = self.list_runner[self.active]["selection_id"]
         market_id = self.list_runner[self.active]["market_id"]
-        pc = Execution(self.client, market_id=market_id, selection_id = selection_id)
+        pc = Execution(market_id=market_id, selection_id = selection_id)
 
         closed_market_outcome = 0
         for key in self.lost.keys():
@@ -179,7 +180,7 @@ class Runners_Under_Market(Strategy):
     def cashout(self):
         selection_id = self.list_runner[self.active]["selection_id"]
         market_id = self.list_runner[self.active]["market_id"]
-        pc = Execution(self.client, market_id=market_id, selection_id=selection_id)
+        pc = Execution(market_id=market_id, selection_id=selection_id)
         unhedged_position = pc.compute_unhedged_position()
 
         if pc.ask_for_price():
@@ -201,7 +202,7 @@ class Runners_Under_Market(Strategy):
             price = nearest_price(max(self.current_back * 10, 200))
         else:
             price = price_ticks_away(self.current_lay, -1)
-        pricer = Execution(self.client, market_id, selection_id)
+        pricer = Execution(market_id, selection_id)
         pricer.quote(price, size, Side.BACK)
 
 

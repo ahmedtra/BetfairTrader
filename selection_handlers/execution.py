@@ -1,6 +1,8 @@
 from betfair.constants import Side
 from structlog import get_logger
 from abc import ABC, abstractmethod
+
+from betfair_wrapper.authenticate import get_api
 from betfair_wrapper.order_utils import get_price_market_selection
 from time import sleep
 from betfair_wrapper.order_utils import cancel_order, place_bet
@@ -9,8 +11,8 @@ from selection_handlers.priceService import priceService
 
 
 class Execution(positionFetcher, priceService):
-    def __init__(self, client, market_id, selection_id, customer_order_ref = None):
-        super(Execution, self).__init__(client, market_id, selection_id, customer_order_ref)
+    def __init__(self, market_id, selection_id, customer_order_ref = None):
+        super(Execution, self).__init__(market_id, selection_id, customer_order_ref)
 
         self.current_orders = None
         self.current_back = None
@@ -74,18 +76,18 @@ class Execution(positionFetcher, priceService):
                 well_priced_orders.append(order)
                 well_priced_position += order["size"]
             else:
-                cancel_order(self.client, self.market_id, order["bet_id"])
+                get_api().cancel_order(self.market_id, order["bet_id"])
 
         difference_position = well_priced_position - betting_size
 
         if difference_position >0:
-            cancel_order(self.client, self.market_id, well_priced_orders[-1].bet_id, difference_position)
+            get_api().cancel_order(self.market_id, well_priced_orders[-1].bet_id, difference_position)
 
         elif difference_position<0:
             remaining_size = -difference_position
             get_logger().info("placing bet", current_price=self.current_back, current_size=self.current_size,
                               price=price, size=size)
-            match = place_bet(self.client, price, remaining_size, side, self.market_id, self.selection_id)
+            match = get_api().place_bet(price, remaining_size, side, self.market_id, self.selection_id)
             bet_id = match["bet_id"]
             if bet_id is None:
                 get_logger().info("order refused")
@@ -108,7 +110,7 @@ class Execution(positionFetcher, priceService):
     def cancel_all_pending_orders(self):
         self.get_betfair_matches()
         for order in self.unmatched_order:
-                cancel_order(self.client, self.market_id, order["bet_id"])
+            get_api().cancel_order(self.market_id, order["bet_id"])
 
     def compute_already_executed(self):
         sum = 0

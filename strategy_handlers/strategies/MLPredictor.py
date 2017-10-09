@@ -1,9 +1,9 @@
-from betfair.constants import Side
-from betfair.price import price_ticks_away, nearest_price
+
+from betfair.price import nearest_price
 from structlog import get_logger
 
+from betfair_wrapper.authenticate import get_api
 from selection_handlers.execution import Execution
-from betfair_wrapper.utils import  get_runners, get_markets
 
 from strategy_handlers.strategy import Strategy
 
@@ -11,8 +11,8 @@ MAX_STAKE = 20
 MIN_STAKE = 0
 
 class MLPredictor(Strategy):
-    def __init__(self, event_id, client, **params):
-        super(MLPredictor, self).__init__(event_id, client, **params)
+    def __init__(self, event_id, **params):
+        super(MLPredictor, self).__init__(event_id, **params)
         get_logger().info("creating Runner_under_market", event_id = event_id)
         self.target_profit = 5000
         self.traded = False
@@ -34,9 +34,9 @@ class MLPredictor(Strategy):
 
     def create_runner_info(self):
         get_logger().info("checking for runner under market", event_id = self.event_id)
-        markets = get_markets(self.client, self.event_id, "MATCH_ODDS")
+        markets = get_api().get_markets(self.event_id, "MATCH_ODDS")
         get_logger().info("got markets", number_markets = len(markets), event_id = self.event_id)
-        return get_runners(markets)
+        return get_api().get_runners(markets)
 
     def get_regressors(self):
         get_logger().info("getting draw runner")
@@ -99,7 +99,7 @@ class MLPredictor(Strategy):
     def compute_profit_loss(self):
         selection_id = self.list_runner[self.bet_selection_id]["selection_id"]
         market_id = self.list_runner[self.bet_selection_id]["market_id"]
-        pc = Execution(self.client, market_id=market_id, selection_id = selection_id, customer_order_ref= self.customer_ref)
+        pc = Execution(market_id=market_id, selection_id = selection_id, customer_order_ref= self.customer_ref)
 
         closed_market_outcome = 0
         for key in self.lost.keys():

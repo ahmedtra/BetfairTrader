@@ -1,7 +1,7 @@
 from betfair.constants import Side
 from structlog import get_logger
 
-from betfair_wrapper.utils import get_markets, get_runners
+from betfair_wrapper.authenticate import get_api
 from selection_handlers.execution import Execution
 from strategy_handlers.strategy import Strategy
 
@@ -14,8 +14,8 @@ MIN_STAKE = 0
 STARTING_STAKE = 4
 
 class MarketMaker(Strategy):
-    def __init__(self, event_id, client):
-        super(MarketMaker, self).__init__(event_id, client)
+    def __init__(self, event_id):
+        super(MarketMaker, self).__init__(event_id)
         get_logger().info("creating MarketMaker", event_id = event_id)
         self.target_profit = 4
         self.traded = False
@@ -26,13 +26,13 @@ class MarketMaker(Strategy):
         self.non_matched_orders = []
         self.matched_orders = []
         self.customer_ref = "market_maker"
-        self.pricer = Execution(self.client, self.market_id, self.selection_id, self.customer_ref)
+        self.pricer = Execution(self.market_id, self.selection_id, self.customer_ref)
 
 
     def create_runner_info(self):
         get_logger().info("checking for runner for market", event_id = self.event_id)
-        markets = get_markets(self.client, self.event_id, "MATCH_ODDS")
-        runners = get_runners(markets)
+        markets = get_api().get_markets(self.event_id, "MATCH_ODDS")
+        runners = get_api().get_runners(markets)
         get_logger().info("got runners", number_markets = len(runners), event_id = self.event_id)
         return runners
 
@@ -94,11 +94,12 @@ class MarketMaker(Strategy):
         get_logger().info("trade flag", traded = self.traded, market_id = self.market_id)
         return self.traded
 
+
     def compute_profit_loss(self):
 
         selection_id = self.list_runner[0]["selection_id"]
         market_id = self.list_runner[0]["market_id"]
-        pc = Pricer(self.client, market_id=market_id, selection_id = selection_id)
+        pc = Pricer(market_id=market_id, selection_id = selection_id)
         matches = pc.get_betfair_matches("back")
 
         profit = 0

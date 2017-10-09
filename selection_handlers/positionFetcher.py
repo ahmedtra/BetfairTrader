@@ -1,13 +1,14 @@
 from betfair.constants import Side
 from structlog import get_logger
 
+from betfair_wrapper.authenticate import get_api
 from betfair_wrapper.order_utils import get_placed_orders
 
 from selection_handlers.selection import Selection
 
 class positionFetcher(Selection):
-    def __init__(self, client, market_id, selection_id, customer_order_ref = None):
-        super(positionFetcher, self).__init__(client, market_id, selection_id)
+    def __init__(self, market_id, selection_id, customer_order_ref = None):
+        super(positionFetcher, self).__init__(market_id, selection_id)
 
         self.matches = []
         self.matched_order = []
@@ -21,7 +22,7 @@ class positionFetcher(Selection):
         self.customer_order_ref = customer_order_ref
 
     def get_betfair_matches(self, side = None):
-        orders = get_placed_orders(self.client, market_ids=[self.market_id])
+        orders = get_api().get_placed_orders(market_ids=[self.market_id])
         matches = []
         non_matches = []
         market_position = 0
