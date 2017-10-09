@@ -38,7 +38,7 @@ class strategy_manager():
         time_from = (actual_time + timedelta(minutes=self.time_filter_from)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
         time_to = (actual_time + timedelta(minutes=self.time_filter_to)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
 
-        events = get_api().get_events(self.event_id, [self.type_ids], self.inplay_only, time_from, time_to)
+        events = get_api().get_events(self.event_id, self.type_ids, self.inplay_only, time_from, time_to)
 
         return events
 
