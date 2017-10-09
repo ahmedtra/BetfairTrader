@@ -1,9 +1,10 @@
 import threading
+from time import sleep
 
 from betfair_wrapper.authenticate import get_client
 from betfair.constants import PriceData, OrderType, PersistenceType, RollupModel, MarketProjection, MarketSort
 from betfair.models import PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
-    CancelInstruction, ExBestOffersOverrides, MarketFilter
+    CancelInstruction, ExBestOffersOverrides, MarketFilter, TimeRange
 
 from common import singleton
 from structlog import get_logger
@@ -26,6 +27,7 @@ def handle_connection(func):
                         get_logger.info(e)
                         self.client = get_client(True)
                         tries += 1
+                        sleep(tries * 30)
                 if tries == 3:
                     raise ApiFailure("unable to reconnect")
             else:
@@ -220,6 +222,19 @@ class BetfairApiWrapper():
 
         return runners
 
+    @handle_connection
+    def get_events(self, event_id = None, type_ids = None, inplay = False, time_from = None, time_to = None):
+        if event_id is not None:
+            events = self.client.list_events(
+                MarketFilter(event_ids=[event_id])
+            )
+            return events
+
+        events = self.client.list_events(
+            MarketFilter(event_type_ids=type_ids, in_play_only=False,
+                         market_start_time=TimeRange(from_=time_from, to=time_to)),
+        )
+        return events
 
 class ApiFailure(Exception):
     def __init__(self,message):
