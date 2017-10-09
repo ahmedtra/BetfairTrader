@@ -3,7 +3,6 @@ from time import sleep
 
 from betfair.betfair import Betfair
 
-from betfair_wrapper.betfair_wrapper_api import BetfairApiWrapper
 from common import get_config, get_certif_path, singleton
 
 from structlog import get_logger
@@ -11,9 +10,6 @@ from structlog import get_logger
 
 client = None
 client_lock = threading.Lock()
-
-api = None
-
 
 def authenticate():
     conf = get_config()
@@ -58,13 +54,5 @@ def get_client(reconnect = False):
     return client
 
 
-@singleton
-def get_api():
-    global api
-
-    if api is None:
-        api = BetfairApiWrapper()
-
-    return api
 
 

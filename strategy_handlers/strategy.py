@@ -3,7 +3,7 @@ from betfair.price import price_ticks_away, nearest_price
 from structlog import get_logger
 from datetime import datetime
 
-from betfair_wrapper.authenticate import get_api
+from betfair_wrapper.betfair_wrapper_api import get_api
 from abc import ABC, abstractmethod
 
 from selection_handlers.execution import Execution

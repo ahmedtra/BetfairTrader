@@ -1,4 +1,4 @@
-from betfair_wrapper.authenticate import get_api
+from betfair_wrapper.betfair_wrapper_api import get_api
 from time import sleep
 from selection_handlers.selection import Selection
 class priceService(Selection):

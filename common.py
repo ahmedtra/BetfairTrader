@@ -18,10 +18,10 @@ def singleton(func):
     result = [sentinel]
     result_lock = threading.Lock()
 
-    def wrapper():
+    def wrapper(*args,**kwargs):
         with result_lock:
             if result[0] is sentinel:
-                result[0] = func()
+                result[0] = func(*args,**kwargs)
         return result[0]
 
     return wrapper

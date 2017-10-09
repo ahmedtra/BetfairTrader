@@ -1,9 +1,8 @@
 
 from time import sleep
 from structlog import get_logger
-import time
 import threading
-import queue
+
 import traceback
 class StrategyPlayer(threading.Thread):
     def __init__(self, queue, strategy, event_id, heartbeat = 30, **params):

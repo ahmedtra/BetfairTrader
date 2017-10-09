@@ -12,6 +12,11 @@ soccer_type_ids = [1]
 
 connection_lock = threading.Lock()
 
+DIGIT_ROUND = 2
+MINIMUM_SIZE = 4
+
+api = None
+
 def handle_connection(func):
     global connection_lock
 
@@ -20,21 +25,21 @@ def handle_connection(func):
             if hasattr(self, "client"):
                 tries = 0
                 response = None
-                while tries < 3:
+                while tries < 5:
                     try:
-                        response = func(*args, **kwargs)
+                        return func(self, *args, **kwargs)
                     except Exception as e:
-                        get_logger().info(e)
-                        self.client = get_client(True)
+                        get_logger().info("connection failed, reconnecting")
                         tries += 1
+                        print("trial "+str(tries))
                         sleep(tries * 30)
+                        self.client = get_client(True)
                 if tries == 3:
                     raise ApiFailure("unable to reconnect")
             else:
-                response = func(*args, **kwargs)
+                response = func(self, *args, **kwargs)
         return response
     return wrapper
-
 
 class BetfairApiWrapper():
     def __init__(self):
@@ -42,10 +47,10 @@ class BetfairApiWrapper():
 
     @handle_connection
     def place_bet(self, price, size, side, market_id, selection_id, customer_order_ref=None):
-        size = round(size, 2)
+        size = round(size, DIGIT_ROUND)
         size_reduction = 0
-        if size < 4:
-            size_reduction = 4 - size
+        if size < MINIMUM_SIZE:
+            size_reduction = MINIMUM_SIZE - size
 
         order = PlaceInstruction()
         order.order_type = OrderType.LIMIT
@@ -235,6 +240,15 @@ class BetfairApiWrapper():
                          market_start_time=TimeRange(from_=time_from, to=time_to)),
         )
         return events
+
+@singleton
+def get_api():
+    global api
+
+    if api is None:
+        api = BetfairApiWrapper()
+
+    return api
 
 class ApiFailure(Exception):
     def __init__(self,message):
