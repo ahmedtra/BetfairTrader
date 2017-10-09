@@ -70,7 +70,7 @@ class strategy_manager():
 
                 event_id = event.event.id
                 get_logger().info("creating thread for strategy", event_id = event_id, event_name = event.event.name)
-                self.thread_pool[event_id] = StrategyPlayer(self.queue, self.strategy, event_id, **self.params)
+                self.thread_pool[event_id] = StrategyPlayer(self.queue, self.strategy, event_id, event_name, **self.params)
                 self.thread_pool[event_id].start()
 
                 if len(self.thread_pool) >= self.max_threads:

@@ -6,25 +6,75 @@ from sqlalchemy import Column, Date, Boolean, Enum, Float, ForeignKey, Index, In
     SmallInteger
 
 class EventTypes(Base):
-    __tablename__ = "betfair_data"
-    Id = Column(Integer, primary_key=True)
-    SPORTS_ID = Column(Float)
-    EVENT_ID = Column(Float)
-    SETTLED_DATE = Column(Integer)
-    FULL_DESCRIPTION = Column(String)
-    SCHEDULED_OFF = Column(DateTime)
-    EVENT = Column(String)
-    SELECTION_ID = Column(Float)
-    SELECTION = Column(String)
-    ODDS = Column(Float)
-    NUMBER_BETS = Column(Float)
-    VOLUME_MATCHED = Column(Float)
-    LATEST_TAKEN = Column(DateTime)
-    FIRST_TAKEN = Column(DateTime)
-    WIN_FLAG = Column(Float)
-    IN_PLAY = Column(String)
-    COMPETITION_TYPE = Column(String)
-    COMPETITION = Column(String)
-    FIXTURES = Column(String)
-    EVENT_NAME = Column(String)
-    MARKET_TYPE = Column(String)
+    __tablename__ = "event_types"
+    event_type_id = Column(String, primary_key=True)
+    name = Column(String)
+    market_count = Column(Integer)
+
+class Competitions(Base):
+    __tablename__ = "competitions"
+    competition_id = Column(String, primary_key=True)
+    name = Column(String)
+    competition_region = Column(String)
+    market_count  = Column(Integer)
+    event_type_id = Column(String)
+
+class Events(Base):
+    __tablename__ = "events"
+    event_id = Column(String, primary_key=True)
+    name = Column(String)
+    country_code = Column(String)
+    timezone = Column(String)
+    venue = Column(String)
+    open_date = Column(DateTime)
+    market_count = Column(Integer)
+    competition_id = Column(String)
+
+class Markets(Base):
+    __tablename__ = "markets"
+    market_id = Column(String, primary_key=True)
+    market_name = Column(String)
+    market_start_time = Column(DateTime)
+    description = Column(String)
+    event_id = Column(String)
+
+
+class Runners(Base):
+    __tablename__ = "runners"
+    selection_id = Column(Integer, primary_key=True)
+    runner_name = Column(String)
+    handicap = Column(Float)
+    sort_priority = Column(Integer)
+    meta_data_id = Column(Integer)
+
+class RunnersMap(Base):
+    __tablename__ = "runners_map"
+    id = Column(Integer, primary_key=True)
+    market_id = Column(String)
+    selection_id = Column(Integer)
+
+class Strategies(Base):
+    __tablename__ = "strategies"
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    id_index = Column(Integer)
+    type_index = Column(Enum("event", "market", "runner"))
+    event = Column(String)
+    event_name = Column(String)
+    strategy = Column(String)
+
+class Orders(Base):
+    __tablename__  = "orders"
+    id = Column(Integer, primary_key=True)
+    strategy_id = Column(Integer)
+    bet_id = Column(Integer)
+    size = Column(Float)
+    selection_id = Column(Integer)
+    market_id = Column(Integer)
+    price = Column(Float)
+    side = Column(String)
+    executed = Column(Float)
+    average_price = Column(Float)
+    ref = Column(String)
+    state = Column(String)
+

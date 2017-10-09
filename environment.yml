@@ -10,6 +10,7 @@ dependencies:
 - wheel=0.29.0=py36_0
 - pip:
   - git+https://github.com/ahmedtra/betfair.py.git
+  - git+https://github.com/ahmedtra/betfairData.git
   - cassandra-driver==3.10
   - configparser==3.5.0
   - decorator==4.0.11

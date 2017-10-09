@@ -11,8 +11,8 @@ MAX_STAKE = 20
 MIN_STAKE = 0
 
 class MLPredictor(Strategy):
-    def __init__(self, event_id, **params):
-        super(MLPredictor, self).__init__(event_id, **params)
+    def __init__(self, event_id, event_name = None, **params):
+        super(MLPredictor, self).__init__(event_id,event_name = event_name,  **params)
         get_logger().info("creating Runner_under_market", event_id = event_id)
         self.target_profit = 5000
         self.traded = False

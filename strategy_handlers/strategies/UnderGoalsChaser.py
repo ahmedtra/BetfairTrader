@@ -10,8 +10,8 @@ MAX_STAKE = 4
 MIN_STAKE = 4
 
 class Runners_Under_Market(Strategy):
-    def __init__(self, event_id):
-        super(Runners_Under_Market, self).__init__(event_id)
+    def __init__(self, event_id, event_name = None, ):
+        super(Runners_Under_Market, self).__init__(event_id, event_name = event_name)
         self.target_profit = 5000
         self.event_id = event_id
         self.traded = False

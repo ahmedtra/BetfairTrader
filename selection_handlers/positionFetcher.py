@@ -6,7 +6,7 @@ from betfair_wrapper.betfair_wrapper_api import get_api
 from selection_handlers.selection import Selection
 
 class positionFetcher(Selection):
-    def __init__(self, market_id, selection_id, customer_ref = None):
+    def __init__(self, market_id, selection_id, customer_ref = None, strategy_id = None):
         super(positionFetcher, self).__init__(market_id, selection_id)
 
         self.matches = []
@@ -19,6 +19,7 @@ class positionFetcher(Selection):
         self.position_back = 0
         self.position_lay = 0
         self.customer_ref = customer_ref
+        self.strategy_id = strategy_id
 
     def get_betfair_matches(self, side = None):
         orders = get_api().get_placed_orders(market_ids=[self.market_id])
@@ -52,6 +53,10 @@ class positionFetcher(Selection):
                 non_match["size"] = order.size_remaining
                 non_match["side"] = order.side
                 non_matches.append(non_match)
+
+
+            self.add_order_to_db(order.bet_id, order.price_size.size, order.price_size.price, order.side,
+                                 order.size_matched, order.average_price_matched, order.customer_order_ref, order.status)
 
         self.matched_order = matches
         self.unmatched_order = non_matches
@@ -111,3 +116,8 @@ class positionFetcher(Selection):
         self.win = win_outcome
         self.lost = lost_outcome
         return win_outcome
+
+    def add_order_to_db(self, bet_id, size, price, side, matched_size, matched_price, ref, state):
+        self.sqldb.add_order(self.strategy_id, bet_id, size, side, self.selection_id, price, matched_size,
+                             matched_price, ref, state, self.market_id)
+        self.sqldb.commit_changes()

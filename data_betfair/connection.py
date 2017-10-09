@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 import logging
 
 from common import get_config
-from data.sql_wrapper.model import Competitions
+from data_betfair.model import Competitions
 
 __params = None
 
@@ -94,3 +94,6 @@ def get_session():
 
     return _session
 
+
+class RollTableError(Exception):
+    pass

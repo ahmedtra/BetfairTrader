@@ -12,8 +12,8 @@ MAX_STAKE = 4
 MIN_STAKE = 4
 
 class DrawChaser(Strategy):
-    def __init__(self, event_id, **params):
-        super(DrawChaser, self).__init__(event_id, **params)
+    def __init__(self, event_id, event_name = None, **params):
+        super(DrawChaser, self).__init__(event_id, event_name = event_name, **params)
         get_logger().info("creating Runner_under_market", event_id = event_id)
         self.target_profit = 5000
         self.the_draw = None

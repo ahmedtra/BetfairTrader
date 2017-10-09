@@ -6,18 +6,21 @@ from datetime import datetime
 from betfair_wrapper.betfair_wrapper_api import get_api
 from abc import ABC, abstractmethod
 
+from data_betfair.query import DBQuery
 from selection_handlers.execution import Execution
 
 MAX_STAKE = 4
 MIN_STAKE = 4
 
 class Strategy(ABC):
-    def __init__(self, event_id, **params):
+    def __init__(self, event_id, event_name = None, **params):
+        self.strategy_id = None
         get_logger().info("creating strategy", event_id = event_id)
         self.customer_ref = None
         self.current_back = None
         self.current_lay = None
         self.event_id = event_id
+        self.event_name = event_name
         self.stake = 0
         self.pl = 0
         self.already_traded = 0
@@ -27,7 +30,7 @@ class Strategy(ABC):
         self.lost = {}
         self.inplay = False
         self.params = params
-
+        self.sqldb = DBQuery()
 
     @abstractmethod
     def create_runner_info(self):
@@ -112,5 +115,9 @@ class Strategy(ABC):
     def looper(self):
         pass
 
+    def add_strategy(self):
+        strategy = self.sqldb.add_strategy(self.customer_ref, self.event_id, self.event_name)
+        self.strategy_id = strategy.id
+        self.sqldb.commit_changes()
 
 

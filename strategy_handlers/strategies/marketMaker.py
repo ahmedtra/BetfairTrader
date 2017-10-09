@@ -14,8 +14,8 @@ MIN_STAKE = 0
 STARTING_STAKE = 4
 
 class MarketMaker(Strategy):
-    def __init__(self, event_id):
-        super(MarketMaker, self).__init__(event_id)
+    def __init__(self, event_id, event_name = None):
+        super(MarketMaker, self).__init__(event_id, event_name = event_name)
         get_logger().info("creating MarketMaker", event_id = event_id)
         self.target_profit = 4
         self.traded = False

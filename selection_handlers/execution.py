@@ -8,8 +8,8 @@ from selection_handlers.priceService import priceService
 
 
 class Execution(positionFetcher, priceService):
-    def __init__(self, market_id, selection_id, customer_order_ref = None):
-        super(Execution, self).__init__(market_id, selection_id, customer_order_ref)
+    def __init__(self, market_id, selection_id, customer_order_ref = None, strategy_id = None):
+        super(Execution, self).__init__(market_id, selection_id, customer_order_ref, strategy_id)
 
         self.current_orders = None
         self.current_back = None
@@ -17,6 +17,7 @@ class Execution(positionFetcher, priceService):
         self.current_size = None
         self.status = None
         self.customer_ref_id = 0
+
 
     def quote(self, price, size, side):
         tradable = self.ask_for_price()
@@ -48,11 +49,14 @@ class Execution(positionFetcher, priceService):
             get_logger().info("placing bet", current_price=self.current_back, current_size=self.current_size,
                               price=price, size=size)
             ref = self.generate_oder_id(self.selection_id)
-            match = get_api().place_bet(price, remaining_size, side, self.market_id, self.selection_id, customer_order_ref = ref)
+            match = get_api().place_bet(price, remaining_size, side, self.market_id, self.selection_id,
+                                        customer_order_ref = ref)
             bet_id = match["bet_id"]
             if bet_id is None:
                 get_logger().info("order refused")
                 return False
+
+            self.add_order_to_db(bet_id, size, price, side, match["size"], match["price"], ref, "active")
 
             return True
 
@@ -93,6 +97,8 @@ class Execution(positionFetcher, priceService):
             if bet_id is None:
                 get_logger().info("order refused")
                 return False
+
+            self.add_order_to_db(bet_id, size, price, side, match["size"], match["price"], ref, "active")
 
             return True
 

@@ -5,12 +5,13 @@ import threading
 
 import traceback
 class StrategyPlayer(threading.Thread):
-    def __init__(self, queue, strategy, event_id, heartbeat = 30, **params):
+    def __init__(self, queue, strategy, event_id, event_name = None, heartbeat = 30, **params):
         threading.Thread.__init__(self)
         self.queue = queue
         self.event = event_id
+        self.event_name = event_name
         self.heartbeat = heartbeat
-        self.strategy = strategy(event_id, **params)
+        self.strategy = strategy(event_id, event_name, **params)
         self._stop_event = threading.Event()
 
         get_logger().info("creating strategy", event_id = event_id, heartbeat = heartbeat, strategy = strategy)
