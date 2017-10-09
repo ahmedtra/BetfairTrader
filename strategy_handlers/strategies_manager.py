@@ -1,5 +1,6 @@
 import datetime
 import queue
+import traceback
 from datetime import datetime, timedelta
 from time import sleep
 
@@ -79,23 +80,33 @@ class strategy_manager():
                 yield event
 
     def manage_strategies(self):
+        try:
+            for event in self.event_generator():
 
-        for event in self.event_generator():
+                event_id = event.event.id
+                get_logger().info("creating thread for strategy", event_id = event_id, event_name = event.event.name)
+                self.thread_pool[event_id] = StrategyPlayer(self.queue,  self.client, self.strategy, event_id, **self.params)
+                self.thread_pool[event_id].start()
 
-            event_id = event.event.id
-            get_logger().info("creating thread for strategy", event_id = event_id, event_name = event.event.name)
-            self.thread_pool[event_id] = StrategyPlayer(self.queue,  self.client, self.strategy, event_id, **self.params)
-            self.thread_pool[event_id].start()
+                if len(self.thread_pool) >= self.max_threads:
+                    get_logger().info("strategy pool is full, block waiting ...")
+                    event_id = self.queue.get(True)
+                    get_logger().info("strategy finished, removing from the pool", event_id = event_id)
+                    self.thread_pool[event_id].join()
+                    del self.thread_pool[event_id]
+        except Exception as e:
+            get_logger().error(traceback.format_exc())
+            get_logger().info("closing all threads")
 
-            if len(self.thread_pool) >= self.max_threads:
-                get_logger().info("strategy pool is full, block waiting ...")
-                event_id = self.queue.get(True)
-                get_logger().info("strategy finished, removing from the pool", event_id = event_id)
-                self.thread_pool[event_id].join()
-                del self.thread_pool[event_id]
+            for thread in self.thread_pool.values():
+                thread.stop()
+                thread.join()
 
-        get_logger().info("stopping client manager")
-        self.client_manager.stop()
-        self.client_manager.join()
+            get_logger().info("closing strategy manager")
+
+        finally:
+            get_logger().info("stopping client manager")
+            self.client_manager.stop()
+            self.client_manager.join()
 
 

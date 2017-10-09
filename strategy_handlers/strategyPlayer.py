@@ -13,6 +13,7 @@ class StrategyPlayer(threading.Thread):
         self.event = event_id
         self.heartbeat = heartbeat
         self.strategy = strategy(event_id, client, **params)
+        self._stop_event = threading.Event()
 
         get_logger().info("creating strategy", event_id = event_id, heartbeat = heartbeat, strategy = strategy)
 
@@ -29,3 +30,10 @@ class StrategyPlayer(threading.Thread):
                 self.queue.put(self.event)
                 break
             sleep(self.heartbeat)
+
+    def stop(self):
+        self.strategy.cancel_all_pending_orders()
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
