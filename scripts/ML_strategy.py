@@ -1,8 +1,10 @@
-from strategy_handlers.strategies.MLPredictor import MLPredictor
-from strategy_handlers.strategies_manager import strategy_manager
-from common import initialize_logging, ROOT_DIR
 from os.path import join
+
+from common import initialize_logging, ROOT_DIR
 from predictors.RFRPredictor import RFRPredictor
+from strategy_handlers.strategies import MLPredictor
+from strategy_handlers.strategies_manager import strategy_manager
+
 if __name__ == "__main__":
     initialize_logging("machine_learning_predictor")
 
@@ -18,5 +20,5 @@ if __name__ == "__main__":
     predictor = RFRPredictor(path_models,path_encoder, runners, stake = stake, scale_with_pred=scale_with_pred,
                              min_odds=min_odds, max_odds= max_odds, min_pred= min_pred)
     sm = strategy_manager(MLPredictor, number_threads=200, predictor = predictor,
-                          max_odds = max_odds, min_odds = min_odds)
+                          max_odds = max_odds, min_odds = min_odds, event_id="28422307")
     sm.manage_strategies()

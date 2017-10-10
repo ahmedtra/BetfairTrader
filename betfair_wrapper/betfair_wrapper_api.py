@@ -14,7 +14,7 @@ connection_lock = threading.Lock()
 
 DIGIT_ROUND = 2
 MINIMUM_SIZE = 4
-
+NUMBER_TRIALS = 5
 api = None
 
 def handle_connection(func):
@@ -25,7 +25,7 @@ def handle_connection(func):
             if hasattr(self, "client"):
                 tries = 0
                 response = None
-                while tries < 5:
+                while tries < NUMBER_TRIALS:
                     try:
                         return func(self, *args, **kwargs)
                     except Exception as e:
@@ -34,7 +34,7 @@ def handle_connection(func):
                         print("trial "+str(tries))
                         sleep(tries * 30)
                         self.client = get_client(True)
-                if tries == 3:
+                if tries == NUMBER_TRIALS:
                     raise ApiFailure("unable to reconnect")
             else:
                 response = func(self, *args, **kwargs)
@@ -75,7 +75,7 @@ class BetfairApiWrapper():
         if size_reduction > 0:
             bet_id = match["bet_id"]
             self.cancel_order(market_id, bet_id, size_reduction)
-
+        get_logger().debug("place bet", bet_id = match["bet_id"], price = match["price"], size = match["size"])
         return match
 
     @handle_connection
@@ -85,7 +85,7 @@ class BetfairApiWrapper():
         instruction_cancel = CancelInstruction()
         instruction_cancel.bet_id = bet_id
         instruction_cancel.size_reduction = size_reduction
-
+        get_logger().debug("cancel bet", bet_id= bet_id, size=size_reduction)
         return self.client.cancel_orders(market_id, [instruction_cancel])
 
     @handle_connection
@@ -101,7 +101,7 @@ class BetfairApiWrapper():
         match["bet_id"] = response.instruction_reports[0].place_instruction_report.bet_id
         match["price"] = response.instruction_reports[0].place_instruction_report.average_price_matched
         match["size"] = response.instruction_reports[0].place_instruction_report.size_matched
-
+        get_logger().debug("replace bet", bet_id=match["bet_id"], price=match["price"], size=match["size"])
         return match
 
     @handle_connection
@@ -117,6 +117,7 @@ class BetfairApiWrapper():
         price_projection.ex_best_offers_overrides = ex_best_offers_overrides
         books = self.client.list_market_book(market_ids=[market_id], price_projection=price_projection)
 
+        get_logger().debug("asking for runners", market_id = market_id, selection_id = selection_id)
         for runner in books[0].runners:
             if runner.selection_id == selection_id:
                 if len(runner.ex.available_to_back) == 0:
@@ -131,6 +132,7 @@ class BetfairApiWrapper():
                 if books[0].status == "SUSPENDED":
                     status = "SUSPENDED"
                 return back, lay, size, status, orders
+
         return None, None, None, None, None
 
     @handle_connection
@@ -142,6 +144,7 @@ class BetfairApiWrapper():
     @handle_connection
     def get_markets(self, event_id, text_query=""):
 
+        get_logger().debug("asking for markets", event_id = event_id, text_query = text_query)
         markets = self.client.list_market_catalogue(
             MarketFilter(event_type_ids=soccer_type_ids,
                          text_query=text_query,
@@ -201,6 +204,7 @@ class BetfairApiWrapper():
         ex_best_offers_overrides.rollup_limit = 0
         price_projection.ex_best_offers_overrides = ex_best_offers_overrides
         books = self.client.list_market_book(market_ids=marketids, price_projection=price_projection)
+        get_logger().debug("asking for prices", market_id=marketids)
 
         selection_ids = {market["selection_id"]: s for s, market in runners.items()}
         for book in books:
@@ -229,10 +233,14 @@ class BetfairApiWrapper():
 
     @handle_connection
     def keep_alive(self):
+        get_logger().debug("keep alive")
         self.client.keep_alive()
 
     @handle_connection
     def get_events(self, event_id = None, type_ids = None, inplay = False, time_from = None, time_to = None):
+        get_logger().debug("asking for events", event_id = event_id, inplay = inplay,
+                           time_from = time_from, time_to = time_to)
+
         if event_id is not None:
             events = self.client.list_events(
                 MarketFilter(event_ids=[event_id])
@@ -261,7 +269,7 @@ class client_manager(threading.Thread):
 
     def run(self):
         while True:
-            sleep(600)
+            sleep(120)
             get_api().keep_alive()
 
     def stop(self):

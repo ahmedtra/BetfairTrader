@@ -77,3 +77,10 @@ class Orders(Base):
     ref = Column(String)
     state = Column(String)
 
+class States(Base):
+    __tablename__ = "states"
+    id = Column(Integer, primary_key=True)
+    strategy_id = Column(Integer)
+    time = Column(DateTime)
+    key = Column(String)
+    value = Column(String)

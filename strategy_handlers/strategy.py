@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 
 from data_betfair.query import DBQuery
 from selection_handlers.execution import Execution
+from strategy_handlers.state import State
 
 MAX_STAKE = 4
 MIN_STAKE = 4
@@ -28,7 +29,11 @@ class Strategy(ABC):
         self.prices = {}
         self.win = {}
         self.lost = {}
+        self.state = State(self.strategy_id)
         self.inplay = False
+        self.state.update_state("pl", self.pl)
+        self.state.update_state("stake", self.stake)
+        self.state.update_state("inplay", self.inplay)
         self.params = params
         self.sqldb = DBQuery()
 

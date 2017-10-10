@@ -2,7 +2,8 @@ from datetime import datetime
 
 from structlog import get_logger
 
-from data_betfair.model import Competitions, Events, Runners, Markets, RunnersMap, EventTypes, Strategies, Orders
+from data_betfair.model import Competitions, Events, Runners, Markets, RunnersMap, EventTypes, Strategies, Orders, \
+    States
 from data_betfair.connection import get_session
 
 class DBQuery():
@@ -200,6 +201,25 @@ class DBQuery():
             self._flush_changes()
 
         return order
+
+    def add_state(self, strategy_id, time, key, value):
+        res = get_session().query(States) \
+            .filter(States.strategy_id == strategy_id, States.key == key) \
+            .all()
+
+        if len(res) == 0:
+            state = States(strategy_id=strategy_id, time = time, key = key, value = value)
+            self._add_flush_to_secdb(state)
+        else:
+            state = res[0]
+            state.strategy_id = strategy_id
+            state.strategy_id = strategy_id
+            state.time = time
+            state.key = key
+            state.value = value
+            self._flush_changes()
+
+        return state
 
     @staticmethod
     def safe_str(s):

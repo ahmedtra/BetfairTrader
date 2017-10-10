@@ -22,6 +22,7 @@ class StrategyPlayer(threading.Thread):
         while True:
             try:
                 still_alive = self.strategy.looper()
+                self.strategy.state.save_state()
             except Exception as e:
                 get_logger().error("strategy failed", event_id = self.event)
                 get_logger().error(traceback.format_exc())

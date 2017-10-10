@@ -52,15 +52,20 @@ class MLPredictor(Strategy):
                 self.regressor["1"] = price
                 self.regressor["1_back"] = runner["back"]
                 self.regressor_team_map["1"] = runner["selection_id"]
+                self.state.update_state("team1", self.regressor["team1"])
+                self.state.update_state("price_1", [runner["back"], price, runner["lay"]])
             elif self.split_team(runner["event_name"], 1) == runner["runner_name"]:
                 self.regressor["team2"] = runner["runner_name"]
                 self.regressor["2"] = price
                 self.regressor["2_back"] = runner["back"]
                 self.regressor_team_map["2"] = runner["selection_id"]
+                self.state.update_state("team2", self.regressor["team2"])
+                self.state.update_state("price_2", [runner["back"], price, runner["lay"]])
             elif runner["runner_name"] == "The Draw":
                 self.regressor["x"] = price
                 self.regressor["x_back"] = runner["back"]
                 self.regressor_team_map["x"] = runner["selection_id"]
+                self.state.update_state("price_x", [runner["back"], price, runner["lay"]])
 
     @staticmethod
     def split_team(s, i):
@@ -78,6 +83,9 @@ class MLPredictor(Strategy):
 
         self.bet, self.stake = self.predictor.get_bet(self.regressor)
         self.bet_selection_id = self.regressor_team_map[self.bet]
+
+        self.state.update_state("target", self.bet)
+        self.state.update_state("prediction", self.predictor.get_pred())
 
         self.current_back = self.prices[self.bet_selection_id]["back"]
         self.current_lay = self.prices[self.bet_selection_id]["lay"]
@@ -97,6 +105,7 @@ class MLPredictor(Strategy):
             get_logger().info("stake superior than maximum, setting to %f".format(MAX_STAKE),
                               stake = self.stake, price = self.current_back, event_id = self.event_id)
 
+        self.state.update_state("stake", self.stake)
         return self.stake
 
     def compute_profit_loss(self):
@@ -179,6 +188,8 @@ class MLPredictor(Strategy):
            self.pl = self.compute_profit_loss()
            get_logger().info("profit and loss", pl = self.pl, event_id = self.event_id)
 
+        self.state.update_state("traded", self.traded)
+        self.state.update_state("inplay",self.inplay)
         return True
 
 

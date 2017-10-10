@@ -18,6 +18,7 @@ class RFRPredictor():
         self.min_pred = min_pred
         self.models = self.read_models(self.pred_file, self.runners)
         self.encoder = self.read_encoder(self.encoder_file)
+        self.pred = [0 for r in self.runners]
         
     def read_models(self, file, runners):
         models = {}
@@ -42,6 +43,8 @@ class RFRPredictor():
 
         for runner in self.runners:
             pred[runner] = self.models[runner].predict(regressors)[0]
+
+        self.pred = [pred[r] for r in self.runners]
 
         return pred
 
@@ -75,3 +78,6 @@ class RFRPredictor():
             return target, stake_adjusted
         else:
             return target, 0
+
+    def get_pred(self):
+        return self.pred
