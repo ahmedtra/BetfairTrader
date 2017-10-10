@@ -59,6 +59,7 @@ class Strategies(Base):
     name = Column(String)
     event = Column(String)
     event_name = Column(String)
+    status = Column(String)
 
 
 class Orders(Base):

@@ -115,8 +115,8 @@ class Strategy(ABC):
     def looper(self):
         pass
 
-    def add_strategy(self):
-        strategy = self.sqldb.add_strategy(self.customer_ref, self.event_id, self.event_name)
+    def add_strategy(self, status):
+        strategy = self.sqldb.add_strategy(self.customer_ref, self.event_id, self.event_name, status)
         self.strategy_id = strategy.id
         self.sqldb.commit_changes()
 

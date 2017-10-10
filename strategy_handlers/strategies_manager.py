@@ -82,6 +82,7 @@ class strategy_manager():
                     get_logger().info("strategy finished, removing from the pool", event_id = event_id)
                     self.thread_pool[event_id].join()
                     del self.thread_pool[event_id]
+
         except Exception as e:
             get_logger().error(traceback.format_exc())
             get_logger().info("closing all threads")

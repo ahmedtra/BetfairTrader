@@ -144,19 +144,20 @@ class DBQuery():
             self._flush_changes()
         return runner_map
 
-    def add_strategy(self, name , event, event_name):
+    def add_strategy(self, name , event, event_name, status):
         res = get_session().query(Strategies) \
             .filter(Strategies.name == name, Strategies.event == event) \
             .all()
 
         if len(res) == 0:
-            strategy = Strategies(name = name, event = event, event_name = event_name)
+            strategy = Strategies(name = name, event = event, event_name = event_name, status = status)
             self._add_flush_to_secdb(strategy)
         else:
             strategy = res[0]
             strategy.name = name
             strategy.event = event
             strategy.event_name = event_name
+            strategy.status = status
             self._flush_changes()
         return strategy
 

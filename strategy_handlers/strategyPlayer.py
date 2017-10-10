@@ -12,12 +12,13 @@ class StrategyPlayer(threading.Thread):
         self.event_name = event_name
         self.heartbeat = heartbeat
         self.strategy = strategy(event_id, event_name, **params)
-        self.strategy.add_strategy()
+        self.strategy.add_strategy(status = "active")
         self._stop_event = threading.Event()
 
         get_logger().info("creating strategy", event_id = event_id, heartbeat = heartbeat, strategy = strategy)
 
     def run(self):
+        failed = False
         while True:
             try:
                 still_alive = self.strategy.looper()
@@ -25,9 +26,13 @@ class StrategyPlayer(threading.Thread):
                 get_logger().error("strategy failed", event_id = self.event)
                 get_logger().error(traceback.format_exc())
                 still_alive = False
+                self.strategy.add_strategy("failed")
+                failed = True
             if not still_alive:
                 self.strategy.cancel_all_pending_orders()
                 self.queue.put(self.event)
+                if not failed:
+                    self.strategy.add_strategy("finished")
                 break
             sleep(self.heartbeat)
 
