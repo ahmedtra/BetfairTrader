@@ -1,0 +1,31 @@
+CREATE TABLE `strategies` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(50) NULL DEFAULT NULL,
+	`event` VARCHAR(50) NULL DEFAULT NULL,
+	`event_name` VARCHAR(100) NULL DEFAULT NULL,
+	INDEX `Index 1` (`id`)
+)
+COLLATE='utf8_general_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=6
+;
+
+CREATE TABLE `orders` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`strategy_id` INT(11) NULL DEFAULT '0',
+	`bet_id` VARCHAR(50) NULL DEFAULT '0',
+	`selection_id` INT(11) NULL DEFAULT '0',
+	`market_id` INT(11) NULL DEFAULT '0',
+	`price` FLOAT NULL DEFAULT '0',
+	`size` FLOAT NULL DEFAULT '0',
+	`side` VARCHAR(100) NULL DEFAULT '0',
+	`average_price` FLOAT NULL DEFAULT '0',
+	`executed` FLOAT NULL DEFAULT '0',
+	`ref` VARCHAR(100) NULL DEFAULT '0',
+	`state` VARCHAR(100) NULL DEFAULT '0',
+	INDEX `Index 1` (`id`, `strategy_id`)
+)
+COLLATE='utf8_general_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=10
+;

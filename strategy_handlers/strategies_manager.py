@@ -7,10 +7,12 @@ from time import sleep
 from structlog import get_logger
 
 from betfair_wrapper.betfair_wrapper_api import get_api, client_manager
+from data_betfair.connection import initialize_secdb
 
 from strategy_handlers.strategyPlayer import StrategyPlayer
 class strategy_manager():
     def __init__(self, strategy, event_id = None, number_threads = 1, time_filter = None, inplay_only = False, **params):
+        initialize_secdb()
         self.type_ids = [1]
         self.queue = queue.Queue()
         self.thread_pool = {}
@@ -69,7 +71,8 @@ class strategy_manager():
             for event in self.event_generator():
 
                 event_id = event.event.id
-                get_logger().info("creating thread for strategy", event_id = event_id, event_name = event.event.name)
+                event_name = event.event.name
+                get_logger().info("creating thread for strategy", event_id = event_id, event_name = event_name)
                 self.thread_pool[event_id] = StrategyPlayer(self.queue, self.strategy, event_id, event_name, **self.params)
                 self.thread_pool[event_id].start()
 

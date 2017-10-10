@@ -50,27 +50,27 @@ class Strategy(ABC):
     def cancel_all_pending_orders(self, selection_id = None, market_id = None):
         get_logger().info("cancelling all orders", event_id = self.event_id)
         if selection_id is not None and market_id is not None:
-            executioner = Execution(market_id, selection_id, self.customer_ref)
+            executioner = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
             executioner.cancel_all_pending_orders()
             return
 
         for runner in self.list_runner.values():
             market_id = runner["market_id"]
             selection_id = runner["selection_id"]
-            executioner = Execution(market_id, selection_id, self.customer_ref)
+            executioner = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
             executioner.cancel_all_pending_orders()
 
     def liquidate(self, selection_id = None, market_id = None):
         get_logger().info("liquidating all positions", event_id=self.event_id)
         if selection_id is not None and market_id is not None:
-            executioner = Execution(market_id, selection_id, self.customer_ref)
+            executioner = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
             executioner.cashout()
             return
 
         for runner in self.list_runner.values():
             market_id = runner["market_id"]
             selection_id = runner["selection_id"]
-            executioner = Execution(market_id, selection_id, self.customer_ref)
+            executioner = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
             executioner.cashout()
 
     def passif_bet(self,  selection_id, stake, per_of_spread = 1.0, max_odds =200, min_odds=1.01, odds_multip_if_no_spread = 10):
@@ -84,7 +84,7 @@ class Strategy(ABC):
             price = nearest_price(price)
 
         price = max(min_odds, price)
-        pricer = Execution(market_id, selection_id, self.customer_ref)
+        pricer = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
         pricer.quote(price, size, Side.BACK)
 
     def bet(self, selection_id, stake, spread_condition=20):
@@ -98,7 +98,7 @@ class Strategy(ABC):
                           spread=spread, selection_id=selection_id,
                           market_id=market_id, event_id=self.event_id)
         if price is not None and spread is not None and spread < spread_condition:
-            price_chaser = Execution(market_id, selection_id, self.customer_ref)
+            price_chaser = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
             matches = price_chaser.execute(price, size, Side.BACK)
             if matches is None:
                 traded = False

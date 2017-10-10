@@ -30,11 +30,11 @@ password = root
 db = betfairdb
 
 [mysql-betfair]
-hostname = 192.168.1.103
+hostname = localhost
 port = 3306
 username = root
-password = Betfair
-db = betfair
+password = root
+db = betfairdb
 
 
 [json_files]

@@ -102,7 +102,8 @@ class MLPredictor(Strategy):
     def compute_profit_loss(self):
         selection_id = self.list_runner[self.bet_selection_id]["selection_id"]
         market_id = self.list_runner[self.bet_selection_id]["market_id"]
-        pc = Execution(market_id=market_id, selection_id = selection_id, customer_order_ref= self.customer_ref)
+        pc = Execution(market_id=market_id, selection_id = selection_id,
+                       customer_order_ref= self.customer_ref, strategy_id = self.strategy_id)
 
         closed_market_outcome = 0
         for key in self.lost.keys():

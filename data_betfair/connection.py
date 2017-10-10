@@ -32,7 +32,7 @@ def initialize_secdb():
 
     _session = None
 
-    params = dict(get_config().items("mysql"))
+    params = dict(get_config().items("mysql-betfair"))
 
     assert isinstance(params, dict)
     # assert 'parallelize' in params  # excluded: not needed inside the package

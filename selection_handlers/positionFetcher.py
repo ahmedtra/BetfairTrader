@@ -27,10 +27,12 @@ class positionFetcher(Selection):
         non_matches = []
         market_position = 0
 
+        active_bet_ids = []
+
         for order in orders:
             if order.selection_id != self.selection_id:
                 continue
-            if self.customer_ref not in order.customer_order_ref:
+            if (order.customer_order_ref is None) or (self.customer_ref not in order.customer_order_ref):
                 continue
 
             if side is not None:
@@ -54,12 +56,14 @@ class positionFetcher(Selection):
                 non_match["side"] = order.side
                 non_matches.append(non_match)
 
-
+            active_bet_ids.append(order.bet_id)
             self.add_order_to_db(order.bet_id, order.price_size.size, order.price_size.price, order.side,
                                  order.size_matched, order.average_price_matched, order.customer_order_ref, order.status)
 
         self.matched_order = matches
         self.unmatched_order = non_matches
+
+        self.update_cancelled_orders(active_bet_ids)
 
         if side == Side.BACK:
             self.position_back = market_position
@@ -121,3 +125,6 @@ class positionFetcher(Selection):
         self.sqldb.add_order(self.strategy_id, bet_id, size, side, self.selection_id, price, matched_size,
                              matched_price, ref, state, self.market_id)
         self.sqldb.commit_changes()
+
+    def update_cancelled_orders(self, current_orders):
+        self.sqldb.update_cancelled_orders(self.strategy_id, current_orders)

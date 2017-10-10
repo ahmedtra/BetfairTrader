@@ -26,7 +26,7 @@ class MarketMaker(Strategy):
         self.non_matched_orders = []
         self.matched_orders = []
         self.customer_ref = "market_maker"
-        self.pricer = Execution(self.market_id, self.selection_id, self.customer_ref)
+        self.pricer = Execution(self.market_id, self.selection_id, self.customer_ref, self.strategy_id)
 
 
     def create_runner_info(self):

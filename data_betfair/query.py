@@ -160,6 +160,17 @@ class DBQuery():
             self._flush_changes()
         return strategy
 
+    def update_cancelled_orders(self, strategy_id, current_orders_bet_id):
+        res = get_session().query(Orders) \
+            .filter(Orders.strategy_id == strategy_id) \
+            .all()
+
+        for order in res:
+            if order.bet_id not in current_orders_bet_id:
+                order.state = "Cancelled"
+                self._flush_changes()
+
+        self.commit_changes()
 
     def add_order(self, strategy_id, bet_id, size, side, selection_id,
                   price,executed,average_price, ref, state,market_id):

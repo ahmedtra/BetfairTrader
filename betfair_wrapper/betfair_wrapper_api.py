@@ -86,7 +86,7 @@ class BetfairApiWrapper():
         instruction_cancel.bet_id = bet_id
         instruction_cancel.size_reduction = size_reduction
 
-        response = self.client.cancel_orders(market_id, [instruction_cancel])
+        return self.client.cancel_orders(market_id, [instruction_cancel])
 
     @handle_connection
     def replace_order(self, market_id, bet_id, new_price):

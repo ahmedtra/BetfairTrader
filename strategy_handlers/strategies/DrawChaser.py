@@ -24,6 +24,7 @@ class DrawChaser(Strategy):
         else:
             self.draw_limit = 1.01
 
+
     def create_runner_info(self):
         get_logger().info("checking for runner under market", event_id = self.event_id)
         markets = get_api().get_markets(self.event_id, "MATCH_ODDS")
@@ -80,7 +81,7 @@ class DrawChaser(Strategy):
                           spread = spread, selection_id = selection_id,
                           market_id = market_id, event_id = self.event_id)
         if price is not None and spread is not None and spread < 20:
-            price_chaser = Execution(market_id, selection_id, self.customer_ref)
+            price_chaser = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
             matches = price_chaser.execute(price, size, Side.BACK)
             if matches is None:
                 self.traded = False
@@ -96,7 +97,7 @@ class DrawChaser(Strategy):
     def compute_profit_loss(self):
         selection_id = self.list_runner[self.the_draw]["selection_id"]
         market_id = self.list_runner[self.the_draw]["market_id"]
-        pc = Execution(market_id=market_id, selection_id = selection_id, customer_order_ref= self.customer_ref)
+        pc = Execution(market_id=market_id, selection_id = selection_id, customer_order_ref= self.customer_ref, strategy_id=self.strategy_id)
 
         closed_market_outcome = 0
         for key in self.lost.keys():
@@ -172,7 +173,7 @@ class DrawChaser(Strategy):
             price = price_ticks_away(self.current_lay, -1)
 
         price = max(self.draw_limit, price)
-        pricer = Execution(market_id, selection_id, self.customer_ref)
+        pricer = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
         pricer.quote(price, size, Side.BACK)
 
 

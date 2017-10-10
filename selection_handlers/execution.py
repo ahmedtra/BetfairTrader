@@ -37,7 +37,8 @@ class Execution(positionFetcher, priceService):
                 well_priced_orders.append(order)
                 well_priced_position += order["size"]
             else:
-                get_api().cancel_order(self.market_id, order["bet_id"])
+                cancellation_report = get_api().cancel_order(self.market_id, order["bet_id"])
+
 
         difference_position = well_priced_position - betting_size
 
@@ -49,14 +50,14 @@ class Execution(positionFetcher, priceService):
             get_logger().info("placing bet", current_price=self.current_back, current_size=self.current_size,
                               price=price, size=size)
             ref = self.generate_oder_id(self.selection_id)
-            match = get_api().place_bet(price, remaining_size, side, self.market_id, self.selection_id,
+            match = get_api().place_bet(price, remaining_size, side.name, self.market_id, self.selection_id,
                                         customer_order_ref = ref)
             bet_id = match["bet_id"]
             if bet_id is None:
                 get_logger().info("order refused")
                 return False
 
-            self.add_order_to_db(bet_id, size, price, side, match["size"], match["price"], ref, "active")
+            self.add_order_to_db(bet_id, size, price, side.name, match["size"], match["price"], ref, "active")
 
             return True
 
