@@ -10,8 +10,6 @@ from common import singleton
 from structlog import get_logger
 soccer_type_ids = [1]
 
-connection_lock = threading.Lock()
-
 DIGIT_ROUND = 2
 MINIMUM_SIZE = 4
 NUMBER_TRIALS = 5
@@ -21,23 +19,23 @@ def handle_connection(func):
     global connection_lock
 
     def wrapper(self, *args, **kwargs):
-        with connection_lock:
-            if hasattr(self, "client"):
-                tries = 0
-                response = None
-                while tries < NUMBER_TRIALS:
-                    try:
-                        return func(self, *args, **kwargs)
-                    except Exception as e:
-                        get_logger().info("connection failed, reconnecting")
-                        tries += 1
-                        print("trial "+str(tries))
-                        sleep(tries * 30)
-                        self.client = get_client(True)
-                if tries == NUMBER_TRIALS:
-                    raise ApiFailure("unable to reconnect")
-            else:
-                response = func(self, *args, **kwargs)
+
+        if hasattr(self, "client"):
+            tries = 0
+            response = None
+            while tries < NUMBER_TRIALS:
+                try:
+                    return func(self, *args, **kwargs)
+                except Exception as e:
+                    get_logger().info("connection failed, reconnecting")
+                    tries += 1
+                    print("trial "+str(tries))
+                    sleep(tries * 30)
+                    self.client = get_client(True)
+            if tries == NUMBER_TRIALS:
+                raise ApiFailure("unable to reconnect")
+        else:
+            response = func(self, *args, **kwargs)
         return response
     return wrapper
 
