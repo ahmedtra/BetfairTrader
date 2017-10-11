@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 import logging
 
 from common import get_config
-from data_betfair.model import Competitions
+from data_betfair.model import Strategies
 
 __params = None
 
@@ -74,7 +74,7 @@ def get_session():
         try:
             #testing connections before handing it out for real usage.
             if _session:
-                _session.query(Competitions).first()
+                _session.query(Strategies).first()
         except:
             #Invalidating old, so new connection can be created in place of the broken one.
             logging.warn("Current session became invalid, dropping it")
@@ -83,7 +83,7 @@ def get_session():
         if not _session:
             logging.info("initializing new connection")
             db_url = create_sec_db_url()
-            engine = create_engine(db_url, pool_recycle=1800)
+            engine = create_engine(db_url, pool_recycle=1800, pool_size=200)
 
             # for each dbapi connection in the pool make sure to set the writer argument.
             # if it is only set on the session level, connection pooling will switch to

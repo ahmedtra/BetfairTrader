@@ -17,3 +17,4 @@ class State():
         time = datetime.datetime.now()
         for key, value in self.saved_states.items():
             self.sqldb.add_state(self.strategy_id, time, key, str(value))
+        self.sqldb.commit_changes()
