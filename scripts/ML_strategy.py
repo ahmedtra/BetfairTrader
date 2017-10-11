@@ -19,6 +19,6 @@ if __name__ == "__main__":
 
     predictor = RFRPredictor(path_models,path_encoder, runners, stake = stake, scale_with_pred=scale_with_pred,
                              min_odds=min_odds, max_odds= max_odds, min_pred= min_pred)
-    sm = strategy_manager(MLPredictor, number_threads=1, predictor = predictor,
+    sm = strategy_manager(MLPredictor, number_threads=100, predictor = predictor,
                           max_odds = max_odds, min_odds = min_odds)
     sm.manage_strategies()
