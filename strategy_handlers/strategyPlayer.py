@@ -13,6 +13,7 @@ class StrategyPlayer(threading.Thread):
         self.heartbeat = heartbeat
         self.strategy = strategy(event_id, event_name, **params)
         self.strategy.add_strategy(status = "active")
+        self.strategy.initialize_states()
         self._stop_event = threading.Event()
 
         get_logger().info("creating strategy", event_id = event_id, heartbeat = heartbeat, strategy = strategy)

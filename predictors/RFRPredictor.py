@@ -35,6 +35,7 @@ class RFRPredictor():
             team1_label = self.encoder.transform([data["team1"]])[0]
             team2_label = self.encoder.transform([data["team2"]])[0]
         except:
+            self.pred = [-1000 for r in self.runners]
             return {runner:-1000 for runner in self.runners}
         
         regressors = [[team1_label,team2_label,data["1"], data["x"], data["2"]]]

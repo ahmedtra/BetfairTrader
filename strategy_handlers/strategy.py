@@ -29,17 +29,20 @@ class Strategy(ABC):
         self.prices = {}
         self.win = {}
         self.lost = {}
-        self.state = State(self.strategy_id)
         self.inplay = False
-        self.state.update_state("pl", self.pl)
-        self.state.update_state("stake", self.stake)
-        self.state.update_state("inplay", self.inplay)
         self.params = params
         self.sqldb = DBQuery()
+        self.state = None
 
     @abstractmethod
     def create_runner_info(self):
         pass
+
+    def initialize_states(self):
+        self.state = State(self.strategy_id)
+        self.state.update_state("pl", self.pl)
+        self.state.update_state("stake", self.stake)
+        self.state.update_state("inplay", self.inplay)
 
     def update_runner_current_price(self):
         get_logger().info("retriving prices", event_id = self.event_id)
