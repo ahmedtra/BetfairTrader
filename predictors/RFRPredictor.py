@@ -38,11 +38,13 @@ class RFRPredictor():
             self.pred = [-1000 for r in self.runners]
             return {runner:-1000 for runner in self.runners}
         
-        regressors = [[team1_label,team2_label,data["1"], data["x"], data["2"]]]
 
         pred = {}
 
         for runner in self.runners:
+            #odds = [data[r] if runner == r else data[r+"_back"] for r in self.runners]
+            odds = [data[r+"_back"] for r in self.runners]
+            regressors = [[team1_label, team2_label] + odds]
             pred[runner] = self.models[runner].predict(regressors)[0]
 
         self.pred = [pred[r] for r in self.runners]
