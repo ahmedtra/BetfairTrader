@@ -82,7 +82,7 @@ class DrawChaser(Strategy):
                           market_id = market_id, event_id = self.event_id)
         if price is not None and spread is not None and spread < 20:
             price_chaser = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
-            matches = price_chaser.execute(price, size, Side.BACK)
+            matches = price_chaser.reach_stake(price, size, Side.BACK)
             if matches is None:
                 self.traded = False
                 return self.traded

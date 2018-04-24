@@ -130,53 +130,39 @@ class UnderGoalsTimer(Strategy):
 
         self.update_states()
 
-
-        if self.inplay:
-
-            if self.total_matched < self.min_vol:
-                get_logger().info("not enough liquidity at the start, exit", event_id=self.event_id)
-                return False
-
-            if self.elapsed_time >= self.timer:
-                self.cancel_all_pending_orders()
-                self.liquidate()
-
-                return False
-
         if self.total_matched < self.min_vol:
             get_logger().info("not enough liquidity at the start, waiting", event_id=self.event_id)
             return False
 
+        self.compute_stake()
+
+        self.traded = self.compare_pos_stake(self.bet_selection_id, self.stake)
+
         if not self.traded:
-            self.compute_stake()
 
-            self.traded = self.compare_pos_stake(self.bet_selection_id, self.stake)
+            if self.inplay:
+                get_logger().info("game started without taker, exit", event_id=self.event_id)
+                return False
 
-            if not self.inplay:
+            else:
                 if self.stake == 0:
                     self.cancel_all_pending_orders()
                     return True
                 self.passif_bet(self.bet_selection_id, self.stake, min_odds=self.min_odds, per_of_spread=0.8)
-            else:
-                if self.stake == 0:
-                    get_logger().info("no signal at the start of the game",
+        else:
+                self.executed_price = self.get_average_executed_price(self.bet_selection_id)
+                get_logger().info("no signal at the start of the game",
                                        event_id=self.event_id)
 
-                    return False
+                self.exit = self.compare_pos_stake(self.bet_selection_id, self.stake, Side.LAY)
+
+                if not self.exit:
+                    self.passif_bet()
                 if self.prices[self.bet_selection_id]["spread"] > 20 and self.already_traded == 0:
                     get_logger().info("very wide spread, strategy not invested, quitting",
                                       spread=self.prices[self.bet_selection_id]["spread"], event_id=self.event_id)
                     return False
 
-                if self.prices[self.bet_selection_id]["back"] < self.min_odds and self.already_traded == 0:
-                    get_logger().info("very low price, strategy not invested, quitting",
-                                      spread=self.prices[self.bet_selection_id]["back"], event_id=self.event_id)
-                    return False
-
-                if self.prices[self.bet_selection_id]["back"] < self.min_odds:
-                    get_logger().info("very low price, quitting",
-                                      spread=self.prices[self.bet_selection_id]["back"], event_id=self.event_id)
-                    return False
 
                 self.bet(self.bet_selection_id, self.stake)
 

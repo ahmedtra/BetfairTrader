@@ -9,18 +9,18 @@ from strategy_handlers.strategy import Strategy
 
 from datetime import datetime
 
-MAX_STAKE = 4
-MIN_STAKE = 4
+MAX_STAKE = 100
+MIN_STAKE = 2
 
-class UnderGoalsTimer(Strategy):
+class OverGoalsTimer(Strategy):
     def __init__(self, event_id, event_name = None, **params):
-        super(UnderGoalsTimer, self).__init__(event_id, event_name=event_name, **params)
+        super(OverGoalsTimer, self).__init__(event_id, event_name=event_name, **params)
         self.target_profit = 5000
         self.event_id = event_id
         self.traded = False
         self.list_runner = self.create_runner_info()
         self.traded_account = []
-        self.customer_ref = "UGT"
+        self.customer_ref = "OGT"
         self.inplay = False
         self.elapsed_time = 0
         self.total_matched = 0
@@ -30,8 +30,8 @@ class UnderGoalsTimer(Strategy):
             self.timer = params["timer"]
         else:
             self.timer = 15
-        if "market_under_goals" in params.keys():
-            self.market = params["market_under_goals"]
+        if "market_over_goals" in params.keys():
+            self.market = params["market_over_goals"]
         else:
             self.market = 2
         if "min_vol" in params.keys():
@@ -42,7 +42,7 @@ class UnderGoalsTimer(Strategy):
         self.min_odds = 1.1
 
     def create_runner_info(self):
-        get_logger().info("checking for runner under market", event_id = self.event_id)
+        get_logger().info("checking for runner over market", event_id = self.event_id)
         markets = get_api().get_markets(self.event_id, text_query="OVER_UNDER_25")
         get_logger().info("got markets", number_markets = len(markets), event_id = self.event_id)
         return get_api().get_runners(markets)
@@ -57,7 +57,7 @@ class UnderGoalsTimer(Strategy):
             if runner["selection_id"] not in self.win.keys():
                 self.win[runner["selection_id"]] = 0
                 self.lost[runner["selection_id"]] = 0
-            if runner["runner_name"] == "Under {}.5 Goals".format(self.market):
+            if runner["runner_name"] == "Over {}.5 Goals".format(self.market):
                 self.bet_selection_id = runner["selection_id"]
                 self.state.update_state("back", runner["back"])
                 self.current_back = runner["back"]

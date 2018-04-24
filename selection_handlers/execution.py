@@ -1,3 +1,4 @@
+import numpy
 from betfair.constants import Side
 from structlog import get_logger
 from datetime import datetime
@@ -18,6 +19,8 @@ class Execution(positionFetcher, priceService):
         self.status = None
         self.customer_ref_id = 0
 
+    def quote_target(self, price, size):
+        pass
 
     def quote(self, price, size, side):
         tradable = self.ask_for_price()
@@ -62,7 +65,7 @@ class Execution(positionFetcher, priceService):
             return True
 
 
-    def execute(self, price, size, side):
+    def reach_stake(self, price, size, side):
         tradable = self.ask_for_price()
 
         if not tradable:
@@ -103,17 +106,37 @@ class Execution(positionFetcher, priceService):
 
             return True
 
+    def place_order(self, price, size, side):
+        ref = self.generate_oder_id(self.selection_id)
+        match = get_api().place_bet(price, size, side, self.market_id, self.selection_id,
+                                    customer_order_ref=ref)
+        bet_id = match["bet_id"]
+        if bet_id is None:
+            get_logger().info("order refused")
+            return False
+
+        self.add_order_to_db(bet_id, size, price, side, match["size"], match["price"], ref, "active")
+
+    def reach_exposure(self, exposure):
+        unhedged_pos = self.compute_unhedged_position()
+
+
     def cashout(self, percentage = 1.0):
         unhedged_pos = self.compute_unhedged_position()
         self.ask_for_price()
         if unhedged_pos > 0:
             lay_hedge = unhedged_pos / self.current_lay
             lay_hedge = round(lay_hedge, 2)
-            self.execute(self.current_lay, lay_hedge, Side.LAY)
+            self.place_order(self.current_lay, lay_hedge, Side.LAY)
         elif unhedged_pos < 0:
             back_hedge = - unhedged_pos / self.current_back
             back_hedge = round(back_hedge, 2)
-            self.execute(self.current_back, back_hedge, Side.BACK)
+            self.place_order(self.current_back, back_hedge, Side.BACK)
+        if percentage == 1.0:
+            unhedged_pos = self.compute_unhedged_position()
+            if numpy.abs(unhedged_pos) > 0.2:
+                self.cancel_all_pending_orders()
+                self.cashout()
 
     def cancel_all_pending_orders(self):
         self.get_betfair_matches()

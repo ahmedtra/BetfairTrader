@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 
 from data_betfair.query import DBQuery
 from selection_handlers.execution import Execution
+from selection_handlers.positionFetcher import positionFetcher
 from strategy_handlers.state import State
 
 MAX_STAKE = 4
@@ -54,6 +55,32 @@ class Strategy(ABC):
                 p["spread"] = None
         get_logger().info("updated the prices", event_id = self.event_id)
         return self.prices
+
+    def compare_pos_stake(self, selection_id, stake, side = Side.BACK):
+        selection_id = self.list_runner[selection_id]["selection_id"]
+        market_id = self.list_runner[selection_id]["market_id"]
+        pf = positionFetcher(market_id, selection_id, self.customer_ref, self.strategy_id)
+        match = pf.get_betfair_matches(side)
+
+        return stake <= match
+
+    def get_average_executed_price(self, selection_id, side = Side.BACK):
+        selection_id = self.list_runner[selection_id]["selection_id"]
+        market_id = self.list_runner[selection_id]["market_id"]
+        pf = positionFetcher(market_id, selection_id, self.customer_ref, self.strategy_id)
+        match = pf.get_betfair_matches(side)
+
+        return pf.price_back if side == Side.BACK else pf.price_lay
+
+
+    def get_current_position(self, selection_id):
+        selection_id = self.list_runner[selection_id]["selection_id"]
+        market_id = self.list_runner[selection_id]["market_id"]
+        pf = positionFetcher(market_id, selection_id, self.customer_ref, self.strategy_id)
+
+        pos = pf.compute_unhedged_position()
+
+        return pos
 
     def cancel_all_pending_orders(self, selection_id = None, market_id = None):
         get_logger().info("cancelling all orders", event_id = self.event_id)
@@ -107,7 +134,7 @@ class Strategy(ABC):
                           market_id=market_id, event_id=self.event_id)
         if price is not None and spread is not None and spread < spread_condition:
             price_chaser = Execution(market_id, selection_id, self.customer_ref, self.strategy_id)
-            matches = price_chaser.execute(price, size, Side.BACK)
+            matches = price_chaser.reach_stake(price, size, Side.BACK)
             if matches is None:
                 traded = False
                 return traded

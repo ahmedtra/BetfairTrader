@@ -18,6 +18,8 @@ class positionFetcher(Selection):
         self.matches_lay = []
         self.position_back = 0
         self.position_lay = 0
+        self.price_lay = 0
+        self.price_back = 0
         self.customer_ref = customer_ref
         self.strategy_id = strategy_id
 
@@ -28,6 +30,8 @@ class positionFetcher(Selection):
         market_position = 0
 
         active_bet_ids = []
+
+        average_price = 0
 
         for order in orders:
             if order.selection_id != self.selection_id:
@@ -47,6 +51,7 @@ class positionFetcher(Selection):
             match["size"] = order.size_matched
             match["side"] = order.side
             market_position += order.size_matched
+            average_price += order.average_price_matched
             matches.append(match)
 
             if order.status == "EXECUTABLE":
@@ -67,8 +72,10 @@ class positionFetcher(Selection):
 
         if side == Side.BACK:
             self.position_back = market_position
+            self.price_back = average_price
         if side == Side.LAY:
             self.position_lay = market_position
+            self.price_lay = average_price
 
         return market_position
 

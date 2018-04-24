@@ -21,7 +21,7 @@ def authenticate():
 
     get_logger().info("connecting to betfair api")
 
-    client = Betfair(app_key, certif, timeout=5)
+    client = Betfair(app_key, certif, timeout=60)
     client.login(username, password)
 
     get_logger().info("connected to the betfair api")

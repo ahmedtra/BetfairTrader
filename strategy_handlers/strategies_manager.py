@@ -11,7 +11,10 @@ from data_betfair.connection import initialize_secdb
 
 from strategy_handlers.strategyPlayer import StrategyPlayer
 class strategy_manager():
-    def __init__(self, strategy, event_id = None, number_threads = 1, time_filter = None, inplay_only = False, **params):
+    def __init__(self, strategy, event_id = None, number_threads = 1, time_filter = None, inplay_only = False,
+                 market_countries = None, **params):
+
+        self.market_countries = market_countries
         initialize_secdb()
         self.type_ids = [1]
         self.queue = queue.Queue()
@@ -27,7 +30,7 @@ class strategy_manager():
 
         if time_filter is None:
             self.time_filter_from = -60*1
-            self.time_filter_to = 60*1
+            self.time_filter_to = 60*3
         else:
             self.time_filter_from = time_filter[0]
             self.time_filter_to = time_filter[1]
@@ -39,7 +42,8 @@ class strategy_manager():
         time_from = (actual_time + timedelta(minutes=self.time_filter_from)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
         time_to = (actual_time + timedelta(minutes=self.time_filter_to)).strftime('%Y-%m-%dT%H:%M:%S.%f%z')
 
-        events = get_api().get_events(self.event_id, self.type_ids, self.inplay_only, time_from, time_to)
+        events = get_api().get_events(self.event_id, self.type_ids, self.inplay_only, time_from, time_to
+                                      ,market_countries=self.market_countries)
 
         return events
 

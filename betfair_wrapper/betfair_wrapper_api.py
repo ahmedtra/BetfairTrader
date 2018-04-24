@@ -1,6 +1,9 @@
 import threading
 from time import sleep
 
+from requests import ReadTimeout
+from schematics.exceptions import ModelValidationError
+
 from betfair_wrapper.authenticate import get_client
 from betfair.constants import PriceData, OrderType, PersistenceType, RollupModel, MarketProjection, MarketSort
 from betfair.models import PriceProjection, PlaceInstruction, LimitOrder, ReplaceInstruction, \
@@ -26,12 +29,20 @@ def handle_connection(func):
             while tries < NUMBER_TRIALS:
                 try:
                     return func(self, *args, **kwargs)
+                except ModelValidationError as e:
+                    get_logger().info(e.messages)
+                    break
+                except ReadTimeout as e:
+                    get_logger().error(e.args)
+                    break
                 except Exception as e:
                     get_logger().info("connection failed, reconnecting")
                     tries += 1
                     print("trial "+str(tries))
                     sleep(tries * 30)
                     self.client = get_client(True)
+
+
             if tries == NUMBER_TRIALS:
                 raise ApiFailure("unable to reconnect")
         else:
@@ -47,6 +58,7 @@ class BetfairApiWrapper():
     def place_bet(self, price, size, side, market_id, selection_id, customer_order_ref=None):
         size = round(size, DIGIT_ROUND)
         size_reduction = 0
+
         if size < MINIMUM_SIZE:
             size_reduction = MINIMUM_SIZE - size
 
@@ -55,7 +67,13 @@ class BetfairApiWrapper():
         order.selection_id = selection_id
         order.side = side
         limit_order = LimitOrder()
-        limit_order.price = price
+        if size_reduction > 0:
+            if side == "BACK":
+                limit_order.price = 1000
+            else:
+                limit_order.price = 1.01
+        else:
+            limit_order.price = price
         limit_order.size = max(size, 4)
         limit_order.persistence_type = PersistenceType.LAPSE
         order.limit_order = limit_order
@@ -73,6 +91,7 @@ class BetfairApiWrapper():
         if size_reduction > 0:
             bet_id = match["bet_id"]
             self.cancel_order(market_id, bet_id, size_reduction)
+            self.replace_order(market_id, bet_id, price)
         get_logger().debug("place bet", bet_id = match["bet_id"], price = match["price"], size = match["size"])
         return match
 
@@ -157,6 +176,7 @@ class BetfairApiWrapper():
         runner_list = {}
         for market in markets:
             market_name = market._data["market_name"]
+            total_matched = market._data["total_matched"]
             runners = market._data["runners"]
             for runner in runners:
                 selection_id = runner.selection_id
@@ -168,7 +188,7 @@ class BetfairApiWrapper():
                 runner_list[selection_id]["event_name"] = market._data["event"]["name"]
                 runner_list[selection_id]["timezone"] = market._data["event"]["timezone"]
                 runner_list[selection_id]["event_id"] = market._data["event"]["id"]
-
+                runner_list[selection_id]["total_matched"] = total_matched
         return runner_list
 
     def get_runner_under(self, markets):
@@ -235,7 +255,8 @@ class BetfairApiWrapper():
         self.client.keep_alive()
 
     @handle_connection
-    def get_events(self, event_id = None, type_ids = None, inplay = False, time_from = None, time_to = None):
+    def get_events(self, event_id = None, type_ids = None, inplay = False, time_from = None, time_to = None,
+                   market_countries = None):
         get_logger().debug("asking for events", event_id = event_id, inplay = inplay,
                            time_from = time_from, time_to = time_to)
 
@@ -247,7 +268,8 @@ class BetfairApiWrapper():
 
         events = self.client.list_events(
             MarketFilter(event_type_ids=type_ids, in_play_only=False,
-                         market_start_time=TimeRange(from_=time_from, to=time_to)),
+                         market_start_time=TimeRange(from_=time_from, to=time_to),
+                         market_countries=market_countries),
         )
         return events
 
