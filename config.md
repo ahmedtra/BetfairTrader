@@ -6,8 +6,8 @@ plot = plot
 histdataEvent = histdataEvent 
 
 [auth]
-username = ahmed.trablsi@gmail.com  
-pass = trappatoni123
+username = X
+pass = X
 appkey = 3o3etcx6sszwkBhG
 certif = betfair.pem
 
